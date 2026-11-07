@@ -27,7 +27,7 @@ export const SettingsSchema = z
     maxBlinds: z.number().int().positive().max(100).nullable(),
     a23Rank: z.enum(['second', 'lowest']),
     blindCanShow: z.boolean(),
-    turnTimerSec: z.union([z.literal(30), z.literal(60)]).nullable(),
+    turnTimerSec: z.union([z.literal(30), z.literal(45), z.literal(60)]).nullable(),
     physicalResolution: z.enum(['tapWinner', 'enterCards', 'hybrid']),
     /** Display only: rupees per chip. null = off. */
     chipRate: z.number().positive().max(1_000_000).nullable(),
@@ -64,7 +64,7 @@ export function defaultSettings(mode: GameMode = 'digital'): Settings {
     maxBlinds: 4,
     a23Rank: 'second',
     blindCanShow: true,
-    turnTimerSec: mode === 'digital' ? 30 : null,
+    turnTimerSec: mode === 'digital' ? 45 : null,
     physicalResolution: 'hybrid',
     chipRate: null,
   };

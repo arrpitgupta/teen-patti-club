@@ -30,7 +30,7 @@ cp client/.env.example client/.env
 pnpm dev                      # server on :4000, client on :5317
 ```
 
-Open http://localhost:5317. To test on a phone on the same Wi-Fi, use the network URL Vite prints and set `CLIENT_ORIGIN` / `VITE_SERVER_URL` to your machine's LAN IP.
+Open http://localhost:5317. Until the game UI exists, http://localhost:4000/dev is a developer console for playing through the server API (one tab per player). To test on a phone on the same Wi-Fi, use the network URL Vite prints and set `CLIENT_ORIGIN` / `VITE_SERVER_URL` to your machine's LAN IP.
 
 ## Scripts
 

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json",
@@ -23,6 +23,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.17.6",
+    "mongodb-memory-server": "^10.1.2",
     "socket.io-client": "^4.8.1",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",

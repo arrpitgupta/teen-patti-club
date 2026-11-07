@@ -1,31 +1,91 @@
-import { createServer, type Server as HttpServer } from 'node:http';
+import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import cors from 'cors';
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import { Server as SocketServer } from 'socket.io';
-import { ENGINE_VERSION } from '@tpc/shared';
 import type { Config } from './config';
+import { DEV_CONSOLE_HTML } from './devConsole';
+import { GameManager, type ManagerOptions } from './game/manager';
+import { createRoutes } from './routes';
+import { registerSockets, type SocketOptions } from './sockets';
+import type { GameStore } from './store/types';
+import { log } from './util/log';
 
-export interface AppHandles {
+export interface ServerDeps {
+  config: Config;
+  store: GameStore;
+  managerOptions?: Partial<ManagerOptions>;
+  socketOptions?: Partial<SocketOptions>;
+}
+
+export interface AppServer {
   app: express.Express;
   httpServer: HttpServer;
   io: SocketServer;
+  manager: GameManager;
+  /** Restore games from the store, then listen. Returns the actual port. */
+  start(port: number): Promise<number>;
+  /** flush=false simulates a crash: pending (debounced) writes are dropped. */
+  stop(opts?: { flush?: boolean }): Promise<void>;
 }
 
-export function createApp(config: Config): AppHandles {
+export function allowedOrigins(config: Config): string[] {
+  return config.CLIENT_ORIGIN.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+}
+
+export function createServer({
+  config,
+  store,
+  managerOptions,
+  socketOptions,
+}: ServerDeps): AppServer {
+  const origins = allowedOrigins(config);
   const app = express();
-  app.use(cors({ origin: config.CLIENT_ORIGIN }));
+  app.set('trust proxy', 1);
+  app.use(cors({ origin: origins }));
   app.use(express.json({ limit: '32kb' }));
 
-  app.get('/health', (_req, res) => {
-    res.json({ ok: true, engine: ENGINE_VERSION, uptime: process.uptime() });
+  const manager = new GameManager(store, managerOptions);
+  app.use(createRoutes(store, manager));
+  if (config.NODE_ENV !== 'production') {
+    // Dev-only console for manual testing before the real client exists.
+    app.get('/dev', (_req, res) => {
+      res.type('html').send(DEV_CONSOLE_HTML);
+    });
+  }
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    log.error('request failed', err);
+    res.status(500).json({ error: 'Something went wrong.' });
   });
 
-  const httpServer = createServer(app);
-  const io = new SocketServer(httpServer, {
-    cors: { origin: config.CLIENT_ORIGIN },
-  });
+  const httpServer = createHttpServer(app);
+  const io = new SocketServer(httpServer, { cors: { origin: origins } });
+  registerSockets(io, manager, socketOptions);
 
-  // Socket handlers are added in Phase 3.
-
-  return { app, httpServer, io };
+  return {
+    app,
+    httpServer,
+    io,
+    manager,
+    async start(port) {
+      await manager.restore();
+      await new Promise<void>((resolve, reject) => {
+        httpServer.once('error', reject);
+        httpServer.listen(port, () => {
+          httpServer.off('error', reject);
+          resolve();
+        });
+      });
+      return (httpServer.address() as AddressInfo).port;
+    },
+    async stop({ flush = true } = {}) {
+      if (flush) await manager.flushAll();
+      manager.stop();
+      await new Promise<void>((resolve) => {
+        io.close(() => resolve());
+      });
+    },
+  };
 }

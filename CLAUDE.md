@@ -31,6 +31,16 @@ pnpm is provided via corepack (`packageManager: pnpm@9.15.0`). On this machine t
 - `schemas/` zod schemas for every client→server socket payload (`parseClientEvent`).
 - Tests: `games/teenPatti/simulation.test.ts` plays 300 random seeded games checking chip conservation and replay; `testUtils.ts` has `makeTable`, `startWith` (rigged hands), `act`.
 
+## Server shape (`server/src`)
+
+- `game/manager.ts` `GameManager`: live games in a `Map`, the only place that calls the engine. Handles create/join/reconnect, every client event (`handle`), banker-mode `actAs`, turn timer + 60 s disconnect grace (digital only), host-away offer (2 min), debounced snapshots (300 ms; immediate at round/game end), restore on boot.
+- `sockets.ts` binds sockets to `(code, playerId)`, rate-limits, validates with `parseClientEvent`, replies via ack (or `error` event), broadcasts `state:public` to the room and `state:private` per player. Never emit engine state directly — only `game/views.ts` output.
+- `store/mongo.ts` Mongoose models (`games`, `rounds`). `minimize: false` is required (engine state has empty objects). Lobby games expire after 24 h (partial TTL index).
+- `routes.ts` `/health`, `/api/games/:code`, `/api/games/:code/rounds`, `/api/history` (tokens in `x-player-tokens` header). `/dev` is a dev-only test console (not served in production).
+- Wire types (`PublicGameState`, `PrivateGameState`, `Ack`, …) live in `shared/src/protocol.ts`.
+- Never log `MONGODB_URI`: use `util/log.ts` (redacts registered secrets and credentials in connection strings).
+- Tests: `vitest` with one `mongodb-memory-server` for the run (`test/globalSetup.ts`); helpers in `test/helpers.ts` (`startTestServer`, `TestClient`, `setupTable`, `syncAll`). Tests never read `server/.env`. First run downloads/starts mongod and can take ~2 min.
+
 ## Conventions
 
 - Strict TypeScript (`noUncheckedIndexedAccess` on). ESM everywhere. Type-only imports use `import type`.

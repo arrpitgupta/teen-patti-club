@@ -62,6 +62,8 @@ export const ClientEventSchemas = {
   'host:transfer': z.object({ playerId: PlayerIdSchema }).strict(),
   'host:addOfflineSeat': z.object({ name: DisplayNameSchema, avatar: AvatarSchema }).strict(),
   'host:pause': z.object({ paused: z.boolean() }).strict(),
+  /** The player offered the host role (host away > 2 min) accepts it. */
+  'host:claim': empty,
 } as const;
 
 export type ClientEventName = keyof typeof ClientEventSchemas;

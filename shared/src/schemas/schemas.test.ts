@@ -8,7 +8,8 @@ describe('settings schema', () => {
     expect(SettingsSchema.safeParse(defaultSettings('physical')).success).toBe(true);
   });
 
-  it('turn timer defaults to off in physical mode', () => {
+  it('turn timer defaults to 45 s in digital mode and off in physical mode', () => {
+    expect(defaultSettings('digital').turnTimerSec).toBe(45);
     expect(defaultSettings('physical').turnTimerSec).toBeNull();
   });
 

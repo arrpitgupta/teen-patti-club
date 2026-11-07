@@ -10,7 +10,15 @@ SPEC.md §4 defines the core rules. This file records how ambiguous points were 
 - **Max chaal caps the stake.** Blind players pay at most the cap; seen players at most 2× the cap.
 - **Max blinds** counts blind bets in the current round. After N, a player must see before betting or asking for a show. They can always pack.
 - **Pack** only on your own turn. **See cards** any time (except before physical cards are dealt); not a turn action; irreversible.
-- **Turn timer** runs out → the player packs (or, if they were asked for a side show, it counts as deny). Timer off → the game waits.
+- **Turn timer** (default 45 s in digital mode, off in physical mode) runs out → the player packs (or, if they were asked for a side show, it counts as deny). Timer off → the game waits.
+
+## Disconnections
+
+- A disconnected player's seat shows a "reconnecting…" badge. Reconnecting (same token) restores their seat and private state.
+- **Digital:** if it's their turn (or they were asked for a side show), their turn timer pauses and a **60 s grace period** starts; when it runs out they auto-pack (or the side show counts as deny). If they come back in time, their turn timer resumes where it stopped. This applies even when the turn timer is off.
+- **Physical:** a disconnected player is never auto-packed. The host can act for them (pack, bet, …) as in banker mode.
+- **Host away > 2 minutes:** the longest-connected player is offered the host role and can accept it. If the host returns first, the offer is withdrawn.
+- **Server restart:** active and lobby games are reloaded from MongoDB; clients reconnect with their token.
 
 ## Show
 

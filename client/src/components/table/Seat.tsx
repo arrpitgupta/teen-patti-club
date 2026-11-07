@@ -1,6 +1,7 @@
 import type { PublicPlayer, PublicRoundPlayer } from '@tpc/shared';
 import { t } from '../../i18n';
 import { chips, net } from '../../lib/format';
+import { useCountUp } from '../../lib/useCountUp';
 import { SeatFloat } from '../chat/SeatFloat';
 import { Avatar } from '../ui/Avatar';
 import { Icon } from '../ui/Icon';
@@ -38,7 +39,7 @@ export function Seat(props: SeatProps) {
   const status = statusOf(props);
   const size = compact ? 42 : 48;
   const dim = rp?.packed || (props.roundRunning && !rp);
-  const amount = openTab ? player.balance - player.totalBuyIn : player.balance;
+  const amount = useCountUp(openTab ? player.balance - player.totalBuyIn : player.balance);
   const amountText = openTab ? net(amount) : chips(amount);
   const amountColor = openTab
     ? amount > 0

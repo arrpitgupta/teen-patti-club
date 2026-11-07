@@ -320,6 +320,7 @@ export const en = {
     hostTools: 'Host tools',
     code: 'Game code',
     muteChat: 'Mute chat',
+    sound: 'Sound effects',
     away: 'Away: sit out the next rounds',
     awayHint: 'No boot is charged and your balance is kept. Turn it off to play again.',
   },

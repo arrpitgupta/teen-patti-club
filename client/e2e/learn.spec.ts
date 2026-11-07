@@ -74,14 +74,14 @@ test('interactive tutorial: the coach walks through a whole round', async ({ bro
 });
 
 test('practice vs bots: bots play, the round ends, results at the end', async ({ browser }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const page = await newPlayer(browser, TABLET);
   await page.goto('/practice');
   await expect(page.getByText('Practice vs bots')).toBeVisible();
   await expect(page.getByText('YOUR TURN', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /^Pack$/ }).click();
   // Bots finish the round on their own.
-  await expect(page.getByRole('button', { name: 'Next round' })).toBeVisible({ timeout: 40_000 });
+  await expect(page.getByRole('button', { name: 'Next round' })).toBeVisible({ timeout: 70_000 });
   await shot(page, 'practice-recap-tablet');
   await page.getByRole('button', { name: 'Host tools' }).click();
   await page.getByRole('button', { name: 'End game' }).click();

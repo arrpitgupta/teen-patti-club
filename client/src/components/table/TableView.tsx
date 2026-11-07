@@ -1,5 +1,5 @@
 import type { GameLogEvent } from '@tpc/shared';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
 function useHeight(ref: RefObject<HTMLElement>): number {
   const [h, setH] = useState(0);
@@ -18,6 +18,8 @@ import { chips } from '../../lib/format';
 import { joinNames, type TableModel } from '../../lib/model';
 import { useServerNow } from '../../lib/useNow';
 import { BetMarker, DealerChip, PotStack } from '../ui/Chips';
+import { Confetti } from '../ui/Confetti';
+import { FlyLayer } from './FlyLayer';
 import { Icon } from '../ui/Icon';
 import { InlineToasts } from '../ui/Toasts';
 import { seatSpots } from './layout';
@@ -50,6 +52,8 @@ export function TableView({ m, wide }: { m: TableModel; wide: boolean }) {
     [m.pub, m.meId, wide, compact],
   );
   const bets = useMemo(() => lastBets(m), [m]);
+  const [confetti, setConfetti] = useState(0);
+  const celebrate = useCallback(() => setConfetti((c) => c + 1), []);
   const r = m.round;
   const roundRunning = !!r && r.phase !== 'ENDED';
   const timer = m.pub.timer;
@@ -79,6 +83,9 @@ export function TableView({ m, wide }: { m: TableModel; wide: boolean }) {
         <div className="rail absolute inset-[2%] rounded-[50%]">
           <div className="felt absolute inset-[12px] rounded-[50%]" />
         </div>
+
+        <FlyLayer m={m} spots={spots} onWin={celebrate} />
+        <Confetti burst={confetti} />
 
         <Centre
           m={m}

@@ -6,6 +6,7 @@ import { act, actOk } from '../../lib/socket';
 import { disablePush, enablePush, pushAvailable, pushPermission } from '../../lib/push';
 import { LOCAL_CODE } from '../../practice/localGame';
 import { Walkthrough } from '../learn/Walkthrough';
+import { sound } from '../../lib/sound';
 import { getPrefs, savePrefs } from '../../lib/storage';
 import { useChat } from '../../store/chat';
 import { Button } from '../ui/Button';
@@ -68,6 +69,7 @@ export function MenuSheet({
   const [hints, setHints] = useState(getPrefs().hints);
   const muted = useChat((s) => s.muted);
   const [how, setHow] = useState(false);
+  const [soundOn, setSoundOn] = useState(!getPrefs().soundOff);
   // Optimistic: show the new value at once; the server state takes over after the ack.
   const [awayPending, setAwayPending] = useState<boolean | null>(null);
   const away = awayPending ?? !!m.pub.table.players.find((p) => p.id === m.meId)?.away;
@@ -128,6 +130,19 @@ export function MenuSheet({
               type="checkbox"
               checked={away}
               onChange={(e) => setAway(e.target.checked)}
+              className="h-6 w-6 shrink-0 accent-[#F4F1EA]"
+            />
+          </label>
+          <label className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl bg-panel px-4">
+            <span className="text-[15px] font-semibold">{t.menu.sound}</span>
+            <input
+              type="checkbox"
+              checked={soundOn}
+              onChange={(e) => {
+                setSoundOn(e.target.checked);
+                savePrefs({ ...getPrefs(), soundOff: !e.target.checked });
+                if (e.target.checked) sound.chip();
+              }}
               className="h-6 w-6 shrink-0 accent-[#F4F1EA]"
             />
           </label>

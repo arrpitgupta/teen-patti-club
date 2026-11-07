@@ -8,6 +8,7 @@ import { chips, net } from '../../lib/format';
 import type { TableModel } from '../../lib/model';
 import { act, send } from '../../lib/socket';
 import { useGame } from '../../store/game';
+import { useCountUp } from '../../lib/useCountUp';
 import { useMediaQuery, useServerNow } from '../../lib/useNow';
 import { SeatFloat } from '../chat/SeatFloat';
 import { Avatar } from '../ui/Avatar';
@@ -27,12 +28,13 @@ export function YourHand({
   const me = m.me;
   const rp = m.rpOf(m.meId);
   const narrow = useMediaQuery('(max-width: 379px)');
+  const counted = useCountUp(me ? (m.openTab ? m.netOf(me) : me.balance) : 0);
   if (!me) return null;
 
   const myTurn = m.waitingOn === m.meId;
   const canSee =
     !!rp && !rp.seen && !rp.packed && !!r && r.phase !== 'DEALING' && r.phase !== 'ENDED';
-  const amount = m.openTab ? m.netOf(me) : me.balance;
+  const amount = counted;
   const amountText = m.openTab ? net(amount) : chips(amount);
   const amountColor = m.openTab
     ? amount > 0

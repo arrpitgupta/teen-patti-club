@@ -3,10 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { getSocket } from './lib/socket';
+import { unlockAudio } from './lib/sound';
 import './index.css';
 
 // Connect early so the first action doesn't wait for the handshake.
 getSocket();
+// Sounds may only start after a user gesture (iOS): unlock on the first tap.
+window.addEventListener('pointerdown', unlockAudio, { once: true });
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element missing');

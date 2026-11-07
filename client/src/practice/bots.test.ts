@@ -50,7 +50,8 @@ describe('practice bots', () => {
         t = start.state;
         let steps = 0;
         while (isRoundInProgress(t)) {
-          if (++steps > 500) throw new Error(`seed ${seed}: round did not end`);
+          // Rounds should wrap up in a reasonable number of moves.
+          if (++steps > 120) throw new Error(`seed ${seed}: round dragged on too long`);
           const r = t.round!;
           const who =
             r.phase === 'AWAITING_SIDESHOW_RESPONSE' ? r.pendingSideShow!.targetId : r.turnId!;

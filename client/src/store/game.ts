@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { t } from '../i18n';
 import { describeEvent, TOAST_EVENTS } from '../lib/events';
 import { haptics } from '../lib/haptics';
+import { sound } from '../lib/sound';
 
 export type Connection = 'connecting' | 'connected' | 'disconnected';
 
@@ -67,7 +68,10 @@ export const useGame = create<GameStore>((set, get) => ({
     if (pub && s.version < pub.version) return; // stale update
     const wasMyTurn = pub ? isMyTurn(pub, playerId) : false;
     set({ pub: s, clockOffset: s.serverNow - Date.now() });
-    if (!wasMyTurn && isMyTurn(s, playerId)) haptics.yourTurn();
+    if (!wasMyTurn && isMyTurn(s, playerId)) {
+      haptics.yourTurn();
+      sound.turn();
+    }
   },
 
   applyPrivate: (s) => {
@@ -86,7 +90,18 @@ export const useGame = create<GameStore>((set, get) => ({
         continue;
       if (event.type === 'YOU_WERE_KICKED') set({ kicked: true });
       if (event.type === 'TURN_OVERDUE' && event.playerId === playerId) haptics.overdue();
-      if (event.type === 'ROUND_ENDED' && playerId && event.result.payouts[playerId]) haptics.win();
+      if (event.type === 'ROUND_ENDED' && playerId && event.result.payouts[playerId]) {
+        haptics.win();
+        sound.win();
+      }
+      if (
+        event.type === 'BET' ||
+        event.type === 'SIDESHOW_REQUESTED' ||
+        event.type === 'SHOW_REQUESTED'
+      ) {
+        sound.chip();
+      }
+      if (event.type === 'CARDS_DEALT') sound.deal();
       if (event.type === 'NUDGED') {
         if (event.playerId === playerId) {
           haptics.nudge();

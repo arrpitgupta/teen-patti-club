@@ -75,6 +75,8 @@ export interface Prefs {
   pushOff: boolean;
   /** The "How to play" walkthrough was shown (first launch). */
   seenWalkthrough: boolean;
+  /** Sound effects muted. */
+  soundOff: boolean;
 }
 
 export function getPrefs(): Prefs {
@@ -84,6 +86,7 @@ export function getPrefs(): Prefs {
     pushAsked: false,
     pushOff: false,
     seenWalkthrough: false,
+    soundOff: false,
     ...readJson<Partial<Prefs>>(PREFS, {}),
   };
 }

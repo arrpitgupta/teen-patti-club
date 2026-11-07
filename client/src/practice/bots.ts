@@ -75,14 +75,16 @@ export function botMove(
   }
 
   const pressure = r.stake / r.rules.boot; // how expensive it has become
-  const bluff = rng() < bold * 0.25;
-  if (L.show && (strength > 0.6 - bold * 0.1 || (pressure > 8 && strength > 0.4))) {
+  // Long rounds get decided: bots show, side-show or pack more as the round drags on.
+  const long = Math.min(1, Math.max(0, (r.actions.length - 10) / 20));
+  const bluff = rng() < bold * 0.25 * (1 - long);
+  if (L.show && (strength > 0.6 - bold * 0.1 || (pressure > 8 && strength > 0.4) || rng() < long)) {
     return { type: 'SHOW', playerId: bot.id };
   }
-  if (!bluff && strength < 0.18 + pressure * 0.02 && rng() > bold * 0.5) {
+  if (!bluff && strength < 0.18 + pressure * 0.02 + long * 0.4 && rng() > bold * 0.5) {
     return { type: 'PACK', playerId: bot.id };
   }
-  if (L.sideShow && strength > 0.25 && strength < 0.6 && rng() < 0.35) {
+  if (L.sideShow && strength > 0.25 && strength < 0.6 && rng() < 0.35 + long * 0.5) {
     return { type: 'SIDESHOW_REQUEST', playerId: bot.id };
   }
   if (!L.bet)

@@ -1,12 +1,13 @@
 /**
  * @tpc/shared — pure, I/O-free game engine shared by server and client.
- *
- * Planned modules (Phase 2):
- *   cards/       Card, Suit, Rank, deck + Fisher–Yates shuffle (RNG injected)
- *   evaluator/   hand scoring, compareHands, describeHand
- *   engine/      GameDefinition interface, applyAction reducer, comparison resolver
- *   games/teenPatti/  Teen Patti GameDefinition
- *   settlement/  nets + minimal payment list
- *   schemas/     zod schemas for every socket payload
+ * Rules decisions are documented in docs/RULES.md.
  */
-export const ENGINE_VERSION = '0.0.1';
+export const ENGINE_VERSION = '0.1.0';
+
+export * from './cards/cards';
+export * from './engine/types';
+export { deepClone } from './engine/clone';
+export * from './evaluator/evaluator';
+export * from './games/teenPatti';
+export * from './settlement/settlement';
+export * from './schemas/socket';

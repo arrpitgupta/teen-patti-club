@@ -431,6 +431,17 @@ export class GameManager {
       case 'round:cardsDealt':
         return isHost ? this.apply(game, { type: 'CARDS_DEALT' }) : needHost();
 
+      case 'round:showCards': {
+        const { cards } = payload as ClientEventPayload<'round:showCards'>;
+        return seat((id) => ({
+          type: 'SHOW_MY_CARDS',
+          playerId: id,
+          ...(cards ? { cards: [...cards] } : {}),
+        }));
+      }
+      case 'game:away':
+        return seat((id) => ({ type: 'SET_AWAY', playerId: id, away: p.away as boolean }));
+
       case 'action:see':
         return seat((id) => ({ type: 'SEE', playerId: id }));
       case 'action:chaal':

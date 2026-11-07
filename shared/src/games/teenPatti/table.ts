@@ -73,7 +73,7 @@ export interface RoundPlan {
 export function planNextRound(t: TableState): RoundPlan | null {
   const { chipMode, boot } = t.settings;
   const eligible = t.players.filter(
-    (p) => p.present && (chipMode === 'openTab' || p.balance >= boot),
+    (p) => p.present && !p.away && (chipMode === 'openTab' || p.balance >= boot),
   );
   if (eligible.length < 2) return null;
   const bySeat = [...eligible].sort((a, b) => a.seat - b.seat);
@@ -402,6 +402,39 @@ export function applyAction(state: TableState, action: TableAction): TeenPattiRe
       syncBalances(t);
       t.corrections.push({ type: 'UNDO', roundNumber: r.roundNumber, undone: deepClone(undone) });
       events.push({ type: 'UNDONE', action: deepClone(undone) });
+      return done();
+    }
+
+    case 'SET_AWAY': {
+      const tp = t.players.find((p) => p.id === action.playerId && p.present);
+      if (!tp) return fail('UNKNOWN_PLAYER', "That player isn't at the table.");
+      if (!!tp.away === action.away) return done();
+      tp.away = action.away;
+      events.push({ type: 'PLAYER_AWAY', playerId: tp.id, away: action.away });
+      return done();
+    }
+
+    case 'SHOW_MY_CARDS': {
+      const r = t.round;
+      if (!r || r.phase !== 'ENDED' || !r.result || r.result.reason === 'cancelled') {
+        return fail('ILLEGAL_ACTION', 'You can show your cards once a round is over.');
+      }
+      const rp = r.players.find((p) => p.id === action.playerId);
+      if (!rp) return fail('UNKNOWN_PLAYER', "You didn't play this round.");
+      if (r.result.revealedHands[rp.id] || r.shownHands?.[rp.id]) {
+        return fail('ILLEGAL_ACTION', 'Everyone has already seen those cards.');
+      }
+      let cards: Card[] | null = rp.hand ? [...rp.hand] : null;
+      if (!cards && r.rules.mode === 'physical') {
+        const c = action.cards;
+        if (!c || c.length !== 3 || !c.every(isCard) || new Set(c).size !== 3) {
+          return fail('INVALID_CARDS', 'Pick the 3 cards you are showing.');
+        }
+        cards = [...c];
+      }
+      if (!cards) return fail('ILLEGAL_ACTION', 'There are no cards to show.');
+      r.shownHands = { ...r.shownHands, [rp.id]: cards };
+      events.push({ type: 'HAND_SHOWN', playerId: rp.id, cards: [...cards] });
       return done();
     }
 

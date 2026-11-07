@@ -1,10 +1,82 @@
-import { describeHandValue, evaluateHand, type Card } from '@tpc/shared';
+import { describeHand, describeHandValue, evaluateHand, type Card } from '@tpc/shared';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { possessive, t } from '../../i18n';
 import { net } from '../../lib/format';
 import { joinNames, type TableModel } from '../../lib/model';
-import { act } from '../../lib/socket';
+import { act, actOk } from '../../lib/socket';
+import { CardPicker } from '../physical/CardPicker';
+import { Icon } from '../ui/Icon';
 import { CardFace } from '../ui/PlayingCard';
+import { Sheet } from '../ui/Sheet';
+
+/** Hands shown voluntarily after the round, and the "Show my cards" button. */
+function ShownHands({ m }: { m: TableModel }) {
+  const [picking, setPicking] = useState(false);
+  const r = m.round!;
+  const res = r.result!;
+  const shown = Object.entries(r.shownHands) as [string, Card[]][];
+  const mine = r.players.find((p) => p.id === m.meId);
+  const canShow =
+    !!mine &&
+    res.reason !== 'cancelled' &&
+    !res.revealedHands[m.meId] &&
+    !r.shownHands[m.meId] &&
+    (m.mode === 'physical' || !!m.priv?.hand);
+  // Physical without an entered hand: say which cards you're turning over.
+  const needsPick = m.mode === 'physical' && !mine?.entered;
+
+  if (shown.length === 0 && !canShow) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {shown.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-300">
+            {t.recap.shown}
+          </span>
+          <div className="flex flex-wrap gap-4">
+            {shown.map(([id, cards]) => (
+              <div key={id} className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-ink-300">
+                  {m.nameOf(id)} · {describeHand(cards, { a23Rank: r.rules.a23Rank })}
+                </span>
+                <span className="flex gap-1">
+                  {cards.map((c) => (
+                    <CardFace key={c} card={c} size="xs" />
+                  ))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {canShow && (
+        <button
+          type="button"
+          onClick={() => (needsPick ? setPicking(true) : void act('round:showCards', {}))}
+          className="flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-panel text-[15px] font-semibold"
+          title={t.recap.showMyCardsHint}
+        >
+          <Icon name="eye" size={18} />
+          {t.recap.showMyCards}
+        </button>
+      )}
+      <Sheet open={picking} onClose={() => setPicking(false)} title={t.recap.showWhichCards} tall>
+        <CardPicker
+          taken={[]}
+          a23Rank={r.rules.a23Rank}
+          intro={t.recap.showWhichCardsBody}
+          submitLabel={t.recap.showThese}
+          onSubmit={(cards) =>
+            void actOk('round:showCards', { cards: cards as [Card, Card, Card] }).then((ok) => {
+              if (ok) setPicking(false);
+            })
+          }
+        />
+      </Sheet>
+    </div>
+  );
+}
 
 /** After a round: who won, with what, and why (always from the evaluator). */
 export function RoundRecap({ m }: { m: TableModel }) {
@@ -123,6 +195,8 @@ export function RoundRecap({ m }: { m: TableModel }) {
           </div>
         )
       )}
+
+      <ShownHands m={m} />
 
       {m.isHost ? (
         <button

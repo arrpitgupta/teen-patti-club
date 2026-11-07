@@ -142,6 +142,9 @@ export const en = {
     overdueSince: (s: number) => `timer ran out ${s}s ago`,
     reconnecting: 'Reconnecting…',
     sittingOut: 'Sitting out',
+    away: 'Away',
+    youAreAway: 'You’re away: you sit out rounds and pay no boot.',
+    imBack: 'I’m back',
     nextRound: 'Plays next round',
     dealer: 'Dealer',
     ranks: 'Ranks',
@@ -297,6 +300,13 @@ export const en = {
     cancelled: 'Round cancelled — everyone got their chips back.',
     nextRound: 'Next round',
     potLimitTitle: 'Pot limit reached — everyone showed',
+    showMyCards: 'Show my cards',
+    showMyCardsHint: 'Optional: let everyone see what you had.',
+    showWhichCards: 'Which cards are you showing?',
+    showWhichCardsBody:
+      'Pick the 3 cards you’re turning over. Everyone at the table will see them.',
+    showThese: 'Show these cards',
+    shown: 'Shown after the round',
   },
 
   menu: {
@@ -310,6 +320,8 @@ export const en = {
     hostTools: 'Host tools',
     code: 'Game code',
     muteChat: 'Mute chat',
+    away: 'Away: sit out the next rounds',
+    awayHint: 'No boot is charged and your balance is kept. Turn it off to play again.',
   },
 
   nudge: {
@@ -472,6 +484,9 @@ export const en = {
     kickedYou: 'The host removed you from this game.',
     rematch: (name: string) => `${name} started a rematch`,
     handEntered: (name: string) => `${name} entered their hand`,
+    away: (name: string) => `${name} is away and sits out`,
+    back: (name: string) => `${name} is back in the game`,
+    handShown: (name: string, hand: string) => `${name} showed their cards: ${hand}`,
     handsClash: 'Two entered hands share a card — re-check',
     nudged: (by: string, who: string) => `${by} nudged ${who}`,
   },

@@ -2,7 +2,7 @@ import { t } from '../../i18n';
 import { Icon } from './Icon';
 
 export type SeatStatus =
-  'blind' | 'seen' | 'packed' | 'waiting' | 'reconnecting' | 'sittingOut' | 'offline';
+  'blind' | 'seen' | 'packed' | 'waiting' | 'reconnecting' | 'sittingOut' | 'offline' | 'away';
 
 const BASE = 'inline-flex h-[22px] items-center gap-1 whitespace-nowrap rounded-full px-2 text-xs';
 
@@ -45,6 +45,15 @@ export function StatusPill({ status }: { status: SeatStatus }) {
       return (
         <span className={`${BASE} bg-[#2A3A31] font-semibold text-ink-100`}>
           {t.table.sittingOut}
+        </span>
+      );
+    case 'away':
+      return (
+        <span
+          className={`${BASE} bg-[#2A3A31] font-semibold text-ink-100 shadow-[inset_0_0_0_1px_#8D897F]`}
+        >
+          <Icon name="pause" size={12} strokeWidth={2.6} />
+          {t.table.away}
         </span>
       );
     case 'offline':

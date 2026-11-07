@@ -44,6 +44,7 @@ export function YourHand({
   const hand = m.priv?.hand ?? null;
   const size = wide || narrow ? 'md' : 'lg';
   const seenOthers = Object.entries(m.priv?.visibleHands ?? {});
+  const away = !!m.pub.table.players.find((p) => p.id === m.meId)?.away;
 
   const see = () => void act('action:see', {});
 
@@ -81,7 +82,19 @@ export function YourHand({
         </div>
 
         <div className="flex flex-col items-center gap-2">
-          {!r || (r.phase === 'ENDED' && !rp) ? (
+          {away && (!rp || r?.phase === 'ENDED') ? (
+            <div className="flex flex-col items-center gap-2 py-2 text-center">
+              <span className="text-sm text-ink-300">{t.table.youAreAway}</span>
+              <button
+                type="button"
+                onClick={() => void act('game:away', { away: false })}
+                className="flex min-h-[44px] items-center gap-2 rounded-xl bg-ink-100 px-4 text-sm font-bold text-felt-950"
+              >
+                <Icon name="play" size={16} />
+                {t.table.imBack}
+              </button>
+            </div>
+          ) : !r || (r.phase === 'ENDED' && !rp) ? (
             <span className="py-6 text-center text-sm text-ink-300">
               {t.table.waitingNextRound}
             </span>

@@ -1,4 +1,4 @@
-import type { GameLogEvent } from '@tpc/shared';
+import { describeHand, type GameLogEvent } from '@tpc/shared';
 import { t } from '../i18n';
 
 export type NameOf = (id: string) => string;
@@ -87,6 +87,10 @@ export function describeEvent(e: GameLogEvent, nameOf: NameOf): string | null {
       return ev.cardsEntered(nameOf(e.playerId));
     case 'YOU_WERE_KICKED':
       return ev.kickedYou;
+    case 'PLAYER_AWAY':
+      return e.away ? ev.away(nameOf(e.playerId)) : ev.back(nameOf(e.playerId));
+    case 'HAND_SHOWN':
+      return ev.handShown(nameOf(e.playerId), describeHand(e.cards));
     case 'HAND_ENTERED':
       return ev.handEntered(nameOf(e.playerId));
     case 'HANDS_CLASH':
@@ -126,4 +130,6 @@ export const TOAST_EVENTS: ReadonlySet<GameLogEvent['type']> = new Set([
   'YOU_WERE_KICKED',
   'NUDGED',
   'HANDS_CLASH',
+  'PLAYER_AWAY',
+  'HAND_SHOWN',
 ]);

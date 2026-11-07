@@ -32,6 +32,8 @@ export interface PublicRound {
   pendingSideShow: RoundState['pendingSideShow'];
   comparison: PublicComparison | null;
   result: RoundResult | null;
+  /** Cards players chose to show after the round. */
+  shownHands: Record<PlayerId, Card[]>;
   actionCount: number;
 }
 
@@ -103,6 +105,9 @@ export function publicRound(r: RoundState): PublicRound {
           ),
         }
       : null,
+    shownHands: Object.fromEntries(
+      Object.entries(r.shownHands ?? {}).map(([id, h]) => [id, [...h]]),
+    ),
     actionCount: r.actions.length,
   };
 }
@@ -193,6 +198,7 @@ export function tableFromPublic(pub: PublicTable): TableState {
           actions: [],
           result: r.result,
           startBalances: {},
+          shownHands: r.shownHands,
         }
       : null,
     roundInitial: null,

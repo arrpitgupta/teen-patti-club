@@ -119,6 +119,8 @@ export interface RoundState {
   result: RoundResult | null;
   /** Balances before the boot, to restore if the round is cancelled. */
   startBalances: Record<PlayerId, number>;
+  /** Cards players chose to show to everyone after the round ("Show my cards"). */
+  shownHands?: Record<PlayerId, Card[]>;
 }
 
 export type RoundAction =
@@ -147,7 +149,14 @@ export type TableOnlyAction =
   | { type: 'CANCEL_ROUND' }
   | { type: 'REBUY'; playerId: PlayerId }
   | { type: 'UPDATE_SETTINGS'; settings: Settings }
-  | { type: 'UNDO' };
+  | { type: 'UNDO' }
+  /** Sit out from the next round on (or come back). Never changes the current round. */
+  | { type: 'SET_AWAY'; playerId: PlayerId; away: boolean }
+  /**
+   * After a round: show your cards to everyone. Digital: the dealt hand. Physical: the entered
+   * hand, or else the `cards` the player says they are showing.
+   */
+  | { type: 'SHOW_MY_CARDS'; playerId: PlayerId; cards?: Card[] };
 
 export type TableAction = RoundAction | TableOnlyAction;
 
@@ -159,6 +168,8 @@ export interface TablePlayer {
   totalBuyIn: number;
   /** False once the player has left; their balance is kept for settlement. */
   present: boolean;
+  /** "Away": sits out upcoming rounds (no boot); balance kept. */
+  away?: boolean;
 }
 
 export type Correction =
@@ -245,6 +256,9 @@ export type TeenPattiEvent =
   | { type: 'CHIPS_ADJUSTED'; from: AdjustTarget; to: AdjustTarget; amount: number; reason: string }
   | { type: 'REBUY'; playerId: PlayerId; amount: number }
   | { type: 'UNDONE'; action: RoundAction }
+  | { type: 'PLAYER_AWAY'; playerId: PlayerId; away: boolean }
+  /** A voluntary reveal after the round; public by choice. */
+  | { type: 'HAND_SHOWN'; playerId: PlayerId; cards: Card[] }
   | { type: 'SETTINGS_UPDATED' };
 
 export type TeenPattiResult<S> = ActionResult<S, TeenPattiEvent>;

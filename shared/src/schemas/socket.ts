@@ -33,6 +33,12 @@ export const ClientEventSchemas = {
   'game:end': empty,
   'round:start': empty,
   'round:cardsDealt': empty,
+  /** After a round: show your cards (physical without an entered hand: the cards shown). */
+  'round:showCards': z
+    .object({ cards: z.tuple([CardSchema, CardSchema, CardSchema]).optional(), ...actAs })
+    .strict(),
+  /** Sit out upcoming rounds (no boot) or come back. */
+  'game:away': z.object({ away: z.boolean(), ...actAs }).strict(),
   'action:see': seatAction,
   'action:chaal': z.object({ amount: ChipAmountSchema, ...actAs }).strict(),
   'action:pack': seatAction,

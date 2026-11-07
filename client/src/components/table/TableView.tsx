@@ -137,6 +137,7 @@ export function TableView({ m, wide }: { m: TableModel; wide: boolean }) {
                   openTab={m.openTab}
                   sittingOut={roundRunning && !m.rpOf(s.id)}
                   isHost={m.pub.hostPlayerId === s.id}
+                  away={!!m.pub.table.players.find((x) => x.id === s.id)?.away}
                 />
               </div>
             </div>

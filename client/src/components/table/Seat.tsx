@@ -18,11 +18,15 @@ export interface SeatProps {
   openTab: boolean;
   sittingOut: boolean;
   isHost: boolean;
+  /** "Away": sits out upcoming rounds. */
+  away: boolean;
 }
 
 function statusOf(p: SeatProps): SeatStatus | null {
   if (p.overdue) return 'waiting';
   if (!p.player.isOffline && !p.player.connected) return 'reconnecting';
+  if (p.rp && p.roundRunning) return p.rp.status;
+  if (p.away) return 'away';
   if (p.rp) return p.rp.status;
   if (p.roundRunning) return 'sittingOut';
   if (p.player.isOffline) return 'offline';

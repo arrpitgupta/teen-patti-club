@@ -26,6 +26,13 @@ export function MenuSheet({
   const navigate = useNavigate();
   const [hints, setHints] = useState(getPrefs().hints);
   const muted = useChat((s) => s.muted);
+  // Optimistic: show the new value at once; the server state takes over after the ack.
+  const [awayPending, setAwayPending] = useState<boolean | null>(null);
+  const away = awayPending ?? !!m.pub.table.players.find((p) => p.id === m.meId)?.away;
+  const setAway = (v: boolean) => {
+    setAwayPending(v);
+    void actOk('game:away', { away: v }).then(() => setAwayPending(null));
+  };
   const setMuted = useChat((s) => s.setMuted);
   const r = m.round;
   const inRound = !!r && r.phase !== 'ENDED';
@@ -63,6 +70,18 @@ export function MenuSheet({
               savePrefs({ ...getPrefs(), hints: e.target.checked });
             }}
             className="h-6 w-6 accent-[#F4F1EA]"
+          />
+        </label>
+        <label className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl bg-panel px-4 py-2.5">
+          <span className="flex flex-col gap-0.5">
+            <span className="text-[15px] font-semibold">{t.menu.away}</span>
+            <span className="text-[13px] text-ink-300">{t.menu.awayHint}</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={away}
+            onChange={(e) => setAway(e.target.checked)}
+            className="h-6 w-6 shrink-0 accent-[#F4F1EA]"
           />
         </label>
         <label className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl bg-panel px-4">

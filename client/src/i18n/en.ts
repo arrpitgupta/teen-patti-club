@@ -381,6 +381,11 @@ export const en = {
     newGame: 'New game',
     home: 'Home',
     summaryTitle: (code: string) => `Teen Patti Club — game ${code}`,
+    rematch: 'Rematch',
+    rematchHint: 'Same players and rules. You’ll be the host.',
+    joinRematch: 'Join rematch',
+    rematchReady: (name: string) => `${name} started a rematch — same players and rules.`,
+    backToRematch: 'Back to the rematch',
   },
 
   events: {
@@ -424,6 +429,7 @@ export const en = {
     resultDisputed: (name: string) => `${name} disputed — everyone enters cards`,
     cardsEntered: (name: string) => `${name} entered their cards`,
     kickedYou: 'The host removed you from this game.',
+    rematch: (name: string) => `${name} started a rematch`,
   },
 };
 

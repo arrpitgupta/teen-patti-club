@@ -58,6 +58,8 @@ export type ServerLogEvent =
   | { type: 'UNDO_REJECTED' }
   /** Physical mode: the turn timer ran out for this player (no auto-pack). */
   | { type: 'TURN_OVERDUE'; playerId: PlayerId }
+  /** After the game ended, this player started a rematch (same players and settings). */
+  | { type: 'REMATCH_CREATED'; playerId: PlayerId }
   /** Sent only to a kicked player's sockets. */
   | { type: 'YOU_WERE_KICKED' };
 
@@ -143,6 +145,8 @@ export interface PublicGameState {
   hostTransferOffer: { candidateId: PlayerId; at: number } | null;
   stats: Record<PlayerId, PlayerStats>;
   results: GameResults | null;
+  /** Ended games: code of the rematch someone started (join it with `game:rematch`). */
+  rematchCode: string | null;
   /** Most recent log entries (full log via REST later). */
   log: LogEntry[];
 }

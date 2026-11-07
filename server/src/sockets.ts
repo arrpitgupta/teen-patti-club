@@ -171,6 +171,14 @@ export function registerSockets(
               if (res.ok) bind(socket, res.data.code, res.data.playerId);
               return reply(res);
             }
+            case 'game:rematch': {
+              if (!data.code || !data.playerId) {
+                return error('NOT_IN_GAME', 'Join a game first.');
+              }
+              const res = await manager.rematch(data.code, data.playerId);
+              if (res.ok) bind(socket, res.data.code, res.data.playerId);
+              return reply(res);
+            }
             default: {
               if (!data.code || !data.playerId) {
                 return error('NOT_IN_GAME', 'Join a game first.');

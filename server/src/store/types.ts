@@ -42,6 +42,7 @@ export interface GameSnapshot {
   roundStartedAt: number | null;
   chat: ChatMessage[];
   chatSeq: number;
+  rematch: { code: string; seats: Record<string, string> } | null;
   createdAt: number;
   updatedAt: number;
   endedAt: number | null;

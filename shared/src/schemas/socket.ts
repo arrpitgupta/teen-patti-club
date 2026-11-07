@@ -68,6 +68,8 @@ export const ClientEventSchemas = {
   /** quick = a preset line (floats over the seat like a reaction). */
   'chat:send': z.object({ text: ChatTextSchema, quick: z.boolean().optional() }).strict(),
   'chat:react': z.object({ emoji: ReactionSchema }).strict(),
+  /** After the game ended: create the rematch (first tap) or join it (everyone else). */
+  'game:rematch': empty,
 } as const;
 
 export type ClientEventName = keyof typeof ClientEventSchemas;

@@ -59,6 +59,13 @@ export interface ServerGame {
   chat: ChatMessage[];
   /** Id of the last chat message (ids keep increasing even when old ones are dropped). */
   chatSeq: number;
+  /** Ended games: the rematch game and which old player became which new player. */
+  rematch: RematchInfo | null;
+}
+
+export interface RematchInfo {
+  code: string;
+  seats: Record<string, string>;
 }
 
 export type Result<T = null> = { ok: true; data: T } | { ok: false; error: ServerError };

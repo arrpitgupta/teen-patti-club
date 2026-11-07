@@ -116,6 +116,7 @@ export class GameManager {
   private readonly persistTimers = new Map<string, NodeJS.Timeout>();
   private readonly evictTimers = new Map<string, NodeJS.Timeout>();
   private readonly saveChains = new Map<string, Promise<void>>();
+  private readonly rematchLocks = new Map<string, Promise<void>>();
   private stopped = false;
 
   constructor(
@@ -205,6 +206,7 @@ export class GameManager {
       timer: null,
       chat: [],
       chatSeq: 0,
+      rematch: null,
     };
     this.games.set(code, game);
     const added = this.addPlayer(game, input, hashToken(token), false, playerId);
@@ -249,6 +251,74 @@ export class GameManager {
       this.commit(game, res.events, 'now');
     }
     return ok({ code, playerId: player.id });
+  }
+
+  /**
+   * After a game ended: the first player to ask creates the rematch (same settings, offline
+   * seats carried over) and becomes its host; everyone else joins it with the same name and
+   * avatar. Asking again (e.g. from another phone) issues a fresh token for the same seat.
+   */
+  rematch(code: string, playerId: string): Promise<Result<JoinResult>> {
+    // One at a time per game, so two quick taps can't create two rematches.
+    const prev = this.rematchLocks.get(code) ?? Promise.resolve();
+    const run = prev.then(() => this.rematchNow(code, playerId));
+    const settled = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.rematchLocks.set(code, settled);
+    void settled.then(() => {
+      if (this.rematchLocks.get(code) === settled) this.rematchLocks.delete(code);
+    });
+    return run;
+  }
+
+  private async rematchNow(code: string, playerId: string): Promise<Result<JoinResult>> {
+    const game = this.games.get(code);
+    if (!game) return fail('GAME_NOT_FOUND', "That game doesn't exist.");
+    if (game.status !== 'ended') return fail('ILLEGAL_ACTION', 'The game is still going.');
+    const me = game.players.find((p) => p.id === playerId);
+    if (!me || me.isOffline || me.tokenHash === null) {
+      return fail('NOT_IN_GAME', "You weren't at this table.");
+    }
+
+    if (game.rematch) {
+      const next = this.games.get(game.rematch.code);
+      if (!next || next.status === 'ended') {
+        return fail('GAME_ENDED', 'The rematch has already finished.');
+      }
+      const existingId = game.rematch.seats[me.id];
+      const existing = next.players.find((p) => p.id === existingId && p.leftAt === null);
+      if (existing) {
+        const token = newPlayerToken();
+        existing.tokenHash = hashToken(token);
+        this.persistNow(next);
+        return ok({ code: next.code, playerId: existing.id, playerToken: token });
+      }
+      const joined = await this.joinGame(next.code, { name: me.name, avatar: me.avatar });
+      if (!joined.ok) return joined;
+      game.rematch.seats[me.id] = joined.data.playerId;
+      this.persistNow(game);
+      return joined;
+    }
+
+    const created = await this.createGame({
+      name: me.name,
+      avatar: me.avatar,
+      settings: structuredClone(game.table.settings),
+    });
+    if (!created.ok) return created;
+    const next = this.games.get(created.data.code)!;
+    // Players without a phone come along; the new host plays them again.
+    for (const p of game.players) {
+      if (!p.isOffline || p.leftAt !== null) continue;
+      const added = this.addPlayer(next, { name: p.name, avatar: p.avatar }, null, true);
+      if (added.ok) this.pushLog(next, [{ type: 'OFFLINE_SEAT_ADDED', playerId: added.data }]);
+    }
+    if (next.players.length > 1) this.commit(next, [], 'now');
+    game.rematch = { code: next.code, seats: { [me.id]: created.data.playerId } };
+    this.commit(game, [{ type: 'REMATCH_CREATED', playerId: me.id }], 'now');
+    return created;
   }
 
   private async missingGame(code: string): Promise<Result<never>> {
@@ -296,11 +366,15 @@ export class GameManager {
     p.connected = connected;
     p.connectedSince = connected ? now : null;
     p.disconnectedAt = connected ? null : now;
-    const events: ServerLogEvent[] = connected
-      ? wasAway
-        ? [{ type: 'PLAYER_RECONNECTED', playerId }]
-        : []
-      : [{ type: 'PLAYER_DISCONNECTED', playerId }];
+    // After the game ended (e.g. players moving to the rematch) comings and goings are noise.
+    const events: ServerLogEvent[] =
+      game.status === 'ended'
+        ? []
+        : connected
+          ? wasAway
+            ? [{ type: 'PLAYER_RECONNECTED', playerId }]
+            : []
+          : [{ type: 'PLAYER_DISCONNECTED', playerId }];
     this.commit(game, events, 'none');
   }
 
@@ -892,6 +966,7 @@ export class GameManager {
       roundStartedAt: game.roundStartedAt,
       chat: game.chat,
       chatSeq: game.chatSeq,
+      rematch: game.rematch,
       createdAt: game.createdAt,
       updatedAt: game.updatedAt,
       endedAt: game.endedAt,
@@ -933,6 +1008,7 @@ export class GameManager {
       timer: null,
       chat: s.chat ?? [],
       chatSeq: s.chatSeq ?? s.chat?.at(-1)?.id ?? 0,
+      rematch: s.rematch ?? null,
     };
   }
 }

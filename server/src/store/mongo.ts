@@ -39,6 +39,7 @@ const GameSchema = new Schema(
     roundStartedAt: Date,
     chat: Schema.Types.Mixed,
     chatSeq: Number,
+    rematch: { type: Schema.Types.Mixed, default: null },
     createdAt: Date,
     updatedAt: Date,
     endedAt: { type: Date, default: null },

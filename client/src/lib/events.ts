@@ -87,6 +87,8 @@ export function describeEvent(e: GameLogEvent, nameOf: NameOf): string | null {
       return ev.cardsEntered(nameOf(e.playerId));
     case 'YOU_WERE_KICKED':
       return ev.kickedYou;
+    case 'REMATCH_CREATED':
+      return ev.rematch(nameOf(e.playerId));
     case 'GAME_CREATED':
     case 'TURN':
     case 'COMPARISON_STARTED':

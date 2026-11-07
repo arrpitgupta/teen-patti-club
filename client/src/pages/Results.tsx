@@ -1,13 +1,15 @@
-import type { GameResults } from '@tpc/shared';
+import type { GameResults, JoinResult } from '@tpc/shared';
 import { motion } from 'framer-motion';
 import { toPng } from 'html-to-image';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
 import { t } from '../i18n';
 import { chips, net, rupees } from '../lib/format';
 import type { TableModel } from '../lib/model';
+import { act } from '../lib/socket';
+import { getSeat, saveSeat } from '../lib/storage';
 import { useGame } from '../store/game';
 
 function amountText(n: number, rate: number | null): string {
@@ -33,6 +35,48 @@ export function summaryText(
   }
   lines.push('', t.virtualOnly);
   return lines.join('\n');
+}
+
+/** One tap: create the rematch (first player) or join the one someone else started. */
+function Rematch({ m }: { m: TableModel }) {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const next = m.pub.rematchCode;
+  const starter = [...m.pub.log].reverse().find((e) => e.event.type === 'REMATCH_CREATED')
+    ?.event as { type: 'REMATCH_CREATED'; playerId: string } | undefined;
+  const alreadyIn = next ? getSeat(next) : undefined;
+  const isMe = m.me && !m.me.isOffline;
+  if (!isMe) return null;
+
+  const go = async () => {
+    if (alreadyIn) return navigate(`/g/${alreadyIn.code}`);
+    setBusy(true);
+    const res = await act<'game:rematch', JoinResult>('game:rematch', {});
+    setBusy(false);
+    if (!res) return;
+    saveSeat({ ...res, joinedAt: Date.now() });
+    navigate(`/g/${res.code}`);
+  };
+
+  return (
+    <section className="flex flex-col gap-2 rounded-3xl bg-panel p-4">
+      <p className="text-[15px] text-ink-300">
+        {next && starter
+          ? t.results.rematchReady(m.nameOf(starter.playerId))
+          : t.results.rematchHint}
+      </p>
+      <Button
+        variant="ivory"
+        size="lg"
+        icon="repeat"
+        block
+        disabled={busy}
+        onClick={() => void go()}
+      >
+        {alreadyIn ? t.results.backToRematch : next ? t.results.joinRematch : t.results.rematch}
+      </Button>
+    </section>
+  );
 }
 
 export default function Results({ m }: { m: TableModel }) {
@@ -154,9 +198,10 @@ export default function Results({ m }: { m: TableModel }) {
           </section>
         </div>
 
+        <Rematch m={m} />
+
         <div className="grid grid-cols-2 gap-2">
           <Button
-            variant="ivory"
             icon="share"
             className="col-span-2"
             size="lg"

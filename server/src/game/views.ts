@@ -48,6 +48,7 @@ export function publicState(game: ServerGame, now: number): PublicGameState {
     hostTransferOffer: game.hostTransferOffer ? { ...game.hostTransferOffer } : null,
     stats: structuredClone(game.stats),
     results: game.results ? structuredClone(game.results) : null,
+    rematchCode: game.rematch?.code ?? null,
     log: game.log.slice(-LOG_TAIL),
   };
 }

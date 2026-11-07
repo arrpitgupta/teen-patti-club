@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toasts } from './components/ui/Toasts';
 import CreateGame from './pages/CreateGame';
 import GamePage from './pages/GamePage';
+import HistoryPage from './pages/HistoryPage';
 import Home from './pages/Home';
 import JoinGame from './pages/JoinGame';
 import LearnPage, { GlossaryPage } from './pages/LearnPage';
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/tutorial" element={<TutorialPage />} />
         <Route path="/learn" element={<LearnPage />} />
+        <Route path="/history" element={<HistoryPage />} />
         <Route path="/learn/glossary" element={<GlossaryPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

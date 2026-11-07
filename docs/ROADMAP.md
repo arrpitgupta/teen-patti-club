@@ -20,7 +20,8 @@ SPEC.md §13 lists the core phases. This file records what was added or dropped 
 6. **Remote play extras**: "your turn" web push, "Away" toggle (sit out without paying boot),
    voluntary "Show my cards" after a round, revealed hands in the round log.
 
-Then Phase 5 (Learning) and Phase 6 (Polish) as in SPEC.md.
+All six are built. Then Phase 5 (Learning) and Phase 6 (Polish) as in SPEC.md, both built.
+Next: Phase 7 (Deploy).
 
 ## Backlog (after Phase 6)
 

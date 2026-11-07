@@ -325,6 +325,18 @@ export const en = {
     awayHint: 'No boot is charged and your balance is kept. Turn it off to play again.',
   },
 
+  history: {
+    title: 'Your games',
+    link: 'Your games',
+    loading: 'Loading your games…',
+    error: 'Couldn’t load your games. Check your connection and try again.',
+    empty: 'Games you play on this phone show up here, with who owes whom.',
+    players: (n: number) => `${n} players`,
+    place: (rank: number, of: number) => `${rank} of ${of}`,
+    open: 'still open',
+    rejoin: 'Rejoin',
+  },
+
   install: {
     button: 'Install the app',
     hint: 'Full screen, on your home screen, works offline for practice',

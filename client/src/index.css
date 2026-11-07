@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-felt-950 font-sans text-ink-100 antialiased;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  /* Felt surface: radial vignette over the base green. */
+  .felt {
+    background: radial-gradient(
+      ellipse at center,
+      rgb(21 92 63 / 0.9) 0%,
+      rgb(11 51 34) 55%,
+      rgb(4 20 13) 100%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

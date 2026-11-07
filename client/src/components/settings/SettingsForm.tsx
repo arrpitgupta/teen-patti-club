@@ -1,5 +1,5 @@
 import { defaultSettings, SettingsSchema, type Settings } from '@tpc/shared';
-import { useState, type ReactNode } from 'react';
+import { isValidElement, useState, type ReactNode } from 'react';
 import { t } from '../../i18n';
 
 export function useSettingsDraft(initial?: Settings) {
@@ -50,6 +50,21 @@ function Segmented<T extends string | number | null>({
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
+  // A <label> would also label the first radio button inside a segmented control (its name
+  // became "Cards Cards"). Segmented has its own aria-label, so use a plain wrapper there.
+  if (isValidElement(children) && children.type === Segmented) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <span
+          className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-300"
+          aria-hidden="true"
+        >
+          {label}
+        </span>
+        {children}
+      </div>
+    );
+  }
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-300">

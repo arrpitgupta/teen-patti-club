@@ -7,6 +7,7 @@ import { act } from '../../lib/socket';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { Sheet } from '../ui/Sheet';
+import { PresetBar } from '../settings/PresetBar';
 import { SettingsForm, useSettingsDraft } from '../settings/SettingsForm';
 
 type View = 'main' | 'adjust' | 'rules' | 'offline' | 'end';
@@ -247,6 +248,7 @@ function RulesSheet({ open, onClose, m }: { open: boolean; onClose: () => void; 
   const draft = useSettingsDraft(m.pub.table.settings);
   return (
     <Sheet open={open} onClose={onClose} title={t.host.editRules} tall>
+      <PresetBar s={draft.s} setS={draft.setS} lockChips={m.pub.table.roundNumber > 0} />
       <SettingsForm s={draft.s} setS={draft.setS} lockChips={m.pub.table.roundNumber > 0} />
       {draft.error && <p className="text-sm text-down">{draft.error}</p>}
       <Button

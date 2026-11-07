@@ -85,6 +85,20 @@ export const en = {
     submit: 'Create game',
   },
 
+  presets: {
+    title: 'House rules',
+    hint: 'Saved on this phone. Tap one to use it.',
+    none: 'Save the rules you always play with, then pick them next time.',
+    save: 'Save these rules',
+    namePlaceholder: 'e.g. Diwali rules',
+    nameLabel: 'Preset name',
+    saved: (name: string) => `Saved “${name}”`,
+    applied: (name: string) => `Using “${name}”`,
+    remove: (name: string) => `Delete preset ${name}`,
+    replace: 'A preset with this name will be replaced.',
+    chipsKept: 'Chip settings stay as they are once the game has started.',
+  },
+
   join: {
     title: 'Join a game',
     code: 'Game code',

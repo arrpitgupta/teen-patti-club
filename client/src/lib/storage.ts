@@ -1,4 +1,5 @@
 // localStorage can be missing or throw (private mode, blocked storage). Never crash on it.
+import { SettingsSchema, type Settings } from '@tpc/shared';
 
 export function readJson<T>(key: string, fallback: T): T {
   try {
@@ -72,6 +73,44 @@ export interface Prefs {
 
 export function getPrefs(): Prefs {
   return { hints: true, chatMuted: false, ...readJson<Partial<Prefs>>(PREFS, {}) };
+}
+
+export interface RulePreset {
+  name: string;
+  settings: Settings;
+  savedAt: number;
+}
+
+const PRESETS = 'tpc.presets';
+export const PRESET_LIMIT = 12;
+
+/** House-rule presets saved on this device. Presets that no longer validate are skipped. */
+export function getPresets(): RulePreset[] {
+  const raw = readJson<unknown>(PRESETS, []);
+  if (!Array.isArray(raw)) return [];
+  const out: RulePreset[] = [];
+  for (const p of raw as Partial<RulePreset>[]) {
+    const parsed = SettingsSchema.safeParse(p?.settings);
+    if (typeof p?.name === 'string' && parsed.success) {
+      out.push({ name: p.name, settings: parsed.data, savedAt: Number(p.savedAt) || 0 });
+    }
+  }
+  return out;
+}
+
+/** Saves (or replaces, by name) a preset; newest first. */
+export function savePreset(name: string, settings: Settings): RulePreset[] {
+  const clean = name.trim().slice(0, 24);
+  const rest = getPresets().filter((p) => p.name.toLowerCase() !== clean.toLowerCase());
+  const next = [{ name: clean, settings, savedAt: Date.now() }, ...rest].slice(0, PRESET_LIMIT);
+  writeJson(PRESETS, next);
+  return next;
+}
+
+export function deletePreset(name: string): RulePreset[] {
+  const next = getPresets().filter((p) => p.name !== name);
+  writeJson(PRESETS, next);
+  return next;
 }
 
 const CHAT_READ = 'tpc.chatRead';

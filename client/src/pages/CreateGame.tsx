@@ -2,6 +2,7 @@ import type { JoinResult } from '@tpc/shared';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ProfilePicker } from '../components/ProfilePicker';
+import { PresetBar } from '../components/settings/PresetBar';
 import { SettingsForm, useSettingsDraft } from '../components/settings/SettingsForm';
 import { Icon } from '../components/ui/Icon';
 import { t } from '../i18n';
@@ -51,6 +52,7 @@ export default function CreateGame() {
           <h1 className="font-display text-2xl font-bold">{t.create.title}</h1>
         </header>
         <ProfilePicker name={name} avatar={avatar} onName={setName} onAvatar={setAvatar} />
+        <PresetBar s={draft.s} setS={draft.setS} />
         <SettingsForm s={draft.s} setS={draft.setS} />
         {draft.error && <p className="text-sm text-down">{draft.error}</p>}
         <button

@@ -7,6 +7,7 @@ import type { Settings } from './settings';
 import { applyAction, isRoundInProgress, planNextRound } from './table';
 import { makeTable, ok } from './testUtils';
 import type { TableAction, TableState } from './types';
+import { publicView, tableFromPublic } from './views';
 
 /** Small deterministic PRNG so failures are reproducible by seed. */
 function mulberry32(seed: number): () => number {
@@ -26,6 +27,11 @@ function checkInvariants(t: TableState): void {
   const balances = t.players.reduce((s, p) => s + p.balance, 0);
   const bought = t.players.reduce((s, p) => s + p.totalBuyIn, 0);
   const pot = isRoundInProgress(t) ? t.round!.pot : 0;
+  // The client computes legal moves from the public view; it must match the server exactly.
+  const fromPublic = tableFromPublic(publicView(t));
+  for (const p of t.players) {
+    expect(legalActions(fromPublic, p.id)).toEqual(legalActions(t, p.id));
+  }
   // Chips are never created or destroyed.
   expect(balances + pot).toBe(bought);
   if (t.settings.chipMode === 'buyIn') {

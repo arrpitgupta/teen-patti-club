@@ -146,3 +146,47 @@ export function privateView(t: TableState, playerId: PlayerId): PrivateView {
   }
   return view;
 }
+
+/**
+ * Rebuild enough of a TableState from the public view for `legalActions` to run on a client.
+ * Hidden data (hands, action log) is left empty; legality never depends on it.
+ */
+export function tableFromPublic(pub: PublicTable): TableState {
+  const r = pub.round;
+  return {
+    settings: pub.settings,
+    players: pub.players,
+    dealerSeat: pub.dealerSeat,
+    roundNumber: pub.roundNumber,
+    round: r
+      ? {
+          roundNumber: r.roundNumber,
+          dealerSeat: r.dealerSeat,
+          rules: r.rules,
+          players: r.players.map(({ status: _status, ...p }) => ({ ...p, hand: null })),
+          pot: r.pot,
+          stake: r.stake,
+          turnId: r.turnId,
+          phase: r.phase,
+          pendingSideShow: r.pendingSideShow,
+          comparison: r.comparison
+            ? {
+                reason: r.comparison.reason,
+                requesterId: r.comparison.requesterId,
+                playerIds: r.comparison.playerIds,
+                method: r.comparison.method,
+                proposal: r.comparison.proposal,
+                enteredCards: Object.fromEntries(r.comparison.enteredBy.map((id) => [id, []])),
+              }
+            : null,
+          sideShowReveals: [],
+          comparisonResolved: false,
+          actions: [],
+          result: r.result,
+          startBalances: {},
+        }
+      : null,
+    roundInitial: null,
+    corrections: pub.corrections,
+  };
+}

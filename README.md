@@ -30,7 +30,11 @@ cp client/.env.example client/.env
 pnpm dev                      # server on :4000, client on :5317
 ```
 
-Open http://localhost:5317. Until the game UI exists, http://localhost:4000/dev is a developer console for playing through the server API (one tab per player). To test on a phone on the same Wi-Fi, use the network URL Vite prints and set `CLIENT_ORIGIN` / `VITE_SERVER_URL` to your machine's LAN IP.
+Open http://localhost:5317.
+
+**On your phone (same Wi-Fi):** open `http://<this computer's LAN IP>:5317` (Vite prints it as "Network"). The client finds the server on the same address automatically, and invite QR codes use your LAN address even if the host opened `localhost`. On Windows, allow Node through the firewall for private networks the first time.
+
+No MongoDB handy? `pnpm --filter @tpc/server dev:memory` runs the server with an in-memory database (data is lost when it stops). Until the game UI exists, http://localhost:4000/dev is a developer console for playing through the server API (one tab per player). To test on a phone on the same Wi-Fi, use the network URL Vite prints and set `CLIENT_ORIGIN` / `VITE_SERVER_URL` to your machine's LAN IP.
 
 ## Scripts
 
@@ -38,6 +42,7 @@ Open http://localhost:5317. Until the game UI exists, http://localhost:4000/dev 
 | ---------------- | ------------------------------------- |
 | `pnpm dev`       | Run server and client in watch mode   |
 | `pnpm test`      | Run Vitest in `shared` and `server`   |
+| `pnpm test:e2e`  | Playwright end-to-end tests (client)  |
 | `pnpm typecheck` | Strict TypeScript check, all packages |
 | `pnpm lint`      | ESLint                                |
 | `pnpm format`    | Prettier (write)                      |

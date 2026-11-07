@@ -6,6 +6,7 @@ import { Server as SocketServer } from 'socket.io';
 import type { Config } from './config';
 import { DEV_CONSOLE_HTML } from './devConsole';
 import { GameManager, type ManagerOptions } from './game/manager';
+import { originChecker } from './origin';
 import { createRoutes } from './routes';
 import { registerSockets, type SocketOptions } from './sockets';
 import type { GameStore } from './store/types';
@@ -29,22 +30,16 @@ export interface AppServer {
   stop(opts?: { flush?: boolean }): Promise<void>;
 }
 
-export function allowedOrigins(config: Config): string[] {
-  return config.CLIENT_ORIGIN.split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
-}
-
 export function createServer({
   config,
   store,
   managerOptions,
   socketOptions,
 }: ServerDeps): AppServer {
-  const origins = allowedOrigins(config);
+  const origin = originChecker(config);
   const app = express();
   app.set('trust proxy', 1);
-  app.use(cors({ origin: origins }));
+  app.use(cors({ origin }));
   app.use(express.json({ limit: '32kb' }));
 
   const manager = new GameManager(store, managerOptions);
@@ -61,7 +56,7 @@ export function createServer({
   });
 
   const httpServer = createHttpServer(app);
-  const io = new SocketServer(httpServer, { cors: { origin: origins } });
+  const io = new SocketServer(httpServer, { cors: { origin } });
   registerSockets(io, manager, socketOptions);
 
   return {

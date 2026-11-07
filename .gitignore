@@ -9,3 +9,6 @@ coverage
 .vercel
 playwright-report
 test-results
+client/e2e/screens
+client/test-results
+client/playwright-report

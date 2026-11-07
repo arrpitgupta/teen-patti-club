@@ -15,6 +15,8 @@ Real-time, mobile-first Teen Patti web app with **virtual chips only**. Full spe
 - `pnpm install`
 - `pnpm dev` — server (:4000, tsx watch) + client (:5317) in parallel
 - `pnpm test` — Vitest in shared + server · `pnpm --filter @tpc/shared test:watch`
+- `pnpm test:e2e` — Playwright end-to-end (first time: `pnpm --filter @tpc/client exec playwright install chromium`)
+- `pnpm --filter @tpc/server dev:memory` — server with an in-memory MongoDB (no Atlas needed)
 - `pnpm typecheck` · `pnpm lint` · `pnpm format` / `pnpm format:check`
 - `pnpm build` — all packages; server → `server/dist/index.js`, client → `client/dist`
 
@@ -40,6 +42,18 @@ pnpm is provided via corepack (`packageManager: pnpm@9.15.0`). On this machine t
 - Wire types (`PublicGameState`, `PrivateGameState`, `Ack`, …) live in `shared/src/protocol.ts`.
 - Never log `MONGODB_URI`: use `util/log.ts` (redacts registered secrets and credentials in connection strings).
 - Tests: `vitest` with one `mongodb-memory-server` for the run (`test/globalSetup.ts`); helpers in `test/helpers.ts` (`startTestServer`, `TestClient`, `setupTable`, `syncAll`). Tests never read `server/.env`. First run downloads/starts mongod and can take ~2 min.
+
+## Client shape (`client/src`)
+
+- Design: "Midnight Felt" (design canvas approved in Phase 4). Tokens in `tailwind.config.ts`. Gold (`gold-*`) only for the pot, the player to act and your turn; Seen pills are ivory; open-tab seats show nets in `up`/`down`, buy-in seats show balances. Minimum text 12 px on table screens; tap targets ≥ 44 px.
+- `lib/model.ts` `buildModel(pub, priv, meId)` → everything a table screen needs. Legal moves come from the shared engine via `tableFromPublic` + `legalActions` — never hard-code bet ranges, costs or hints. `actorId` is you, or (host) an offline/disconnected seat whose turn it is (banker mode, sent as `actAs`).
+- `lib/socket.ts` single socket; `send`/`act` wrap acks; re-sends `game:reconnect` on every connect. `lib/storage.ts` keeps seats/tokens per game code in localStorage (try/catch everywhere).
+- `store/game.ts` (Zustand): public/private state (stale versions dropped), toasts, haptics on your turn / overdue / win.
+- `pages/`: Home, CreateGame, JoinGame (code / link / QR), GamePage → LobbyRoom | TableScreen | Results.
+- `components/table/`: TableView (oval, seats placed by `layout.ts`, markers, centre), Seat, YourHand, ActionDock (3 s Pack undo, long-press info), BetSheet, SideShowPrompt, DealPanel, RoundRecap. `components/physical/`: ComparisonSheet (only the picker chooses winners; others confirm/dispute read-only), CardPicker.
+- All copy in `i18n/en.ts`.
+- Dev on a phone: the client talks to `http(s)://<same host>:4000` unless `VITE_SERVER_URL` is set; Vite injects `__LAN_ORIGIN__` so QR codes work when the host opened `localhost`. The server allows private-LAN origins outside production.
+- E2E: `pnpm test:e2e` (Playwright; starts `server dev:memory` on :4100 with in-memory Mongo and Vite on :5400). Screenshots land in `client/e2e/screens/` (git-ignored) — look at them after UI changes.
 
 ## Conventions
 

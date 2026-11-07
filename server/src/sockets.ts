@@ -68,8 +68,10 @@ export function registerSockets(
   };
 
   function bind(socket: Socket, code: string, playerId: string): void {
-    unbind(socket, true);
     const data = socket.data as SocketData;
+    // Re-binding the same seat (e.g. join, then reconnect on page load) must not
+    // flicker the player to "disconnected" and back.
+    if (data.code !== code || data.playerId !== playerId) unbind(socket, true);
     data.code = code;
     data.playerId = playerId;
     void socket.join(gameRoom(code));

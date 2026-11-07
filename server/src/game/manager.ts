@@ -281,13 +281,17 @@ export class GameManager {
     const p = game?.players.find((x) => x.id === playerId);
     if (!game || !p || p.connected === connected) return;
     const now = this.now();
+    // A brand-new player connecting for the first time is not a "reconnect".
+    const wasAway = p.disconnectedAt !== null;
     p.connected = connected;
     p.connectedSince = connected ? now : null;
     p.disconnectedAt = connected ? null : now;
-    const event: ServerLogEvent = connected
-      ? { type: 'PLAYER_RECONNECTED', playerId }
-      : { type: 'PLAYER_DISCONNECTED', playerId };
-    this.commit(game, [event], 'none');
+    const events: ServerLogEvent[] = connected
+      ? wasAway
+        ? [{ type: 'PLAYER_RECONNECTED', playerId }]
+        : []
+      : [{ type: 'PLAYER_DISCONNECTED', playerId }];
+    this.commit(game, events, 'none');
   }
 
   // ---------- Client events ----------

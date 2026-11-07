@@ -73,6 +73,8 @@ export interface Prefs {
   pushAsked: boolean;
   /** The player turned notifications off. */
   pushOff: boolean;
+  /** The "How to play" walkthrough was shown (first launch). */
+  seenWalkthrough: boolean;
 }
 
 export function getPrefs(): Prefs {
@@ -81,6 +83,7 @@ export function getPrefs(): Prefs {
     chatMuted: false,
     pushAsked: false,
     pushOff: false,
+    seenWalkthrough: false,
     ...readJson<Partial<Prefs>>(PREFS, {}),
   };
 }

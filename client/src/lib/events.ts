@@ -3,6 +3,9 @@ import { t } from '../i18n';
 
 export type NameOf = (id: string) => string;
 
+/** "You" in the middle of a sentence ("Asha asked you…"). */
+const object = (name: string) => (name === t.common.you ? name.toLowerCase() : name);
+
 /** Plain-English line for a log entry, or null for events not worth showing. */
 export function describeEvent(e: GameLogEvent, nameOf: NameOf): string | null {
   const ev = t.events;
@@ -24,7 +27,7 @@ export function describeEvent(e: GameLogEvent, nameOf: NameOf): string | null {
     case 'PACKED':
       return e.timedOut ? ev.timedOut(nameOf(e.playerId)) : ev.packed(nameOf(e.playerId));
     case 'SIDESHOW_REQUESTED':
-      return ev.sideShowAsked(nameOf(e.playerId), nameOf(e.targetId));
+      return ev.sideShowAsked(nameOf(e.playerId), object(nameOf(e.targetId)));
     case 'SIDESHOW_DENIED':
       return ev.sideShowDenied(nameOf(e.playerId));
     case 'SIDESHOW_ACCEPTED':
@@ -96,7 +99,7 @@ export function describeEvent(e: GameLogEvent, nameOf: NameOf): string | null {
     case 'HANDS_CLASH':
       return ev.handsClash;
     case 'NUDGED':
-      return ev.nudged(nameOf(e.by), nameOf(e.playerId));
+      return ev.nudged(nameOf(e.by), object(nameOf(e.playerId)));
     case 'REMATCH_CREATED':
       return ev.rematch(nameOf(e.playerId));
     case 'GAME_CREATED':

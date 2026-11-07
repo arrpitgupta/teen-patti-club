@@ -11,6 +11,7 @@ import type {
 } from '@tpc/shared';
 import { io, type Socket } from 'socket.io-client';
 import { t } from '../i18n';
+import { LOCAL_CODE, localGame } from '../practice/localGame';
 import { useChat } from '../store/chat';
 import { useGame } from '../store/game';
 import { SERVER_URL } from './config';
@@ -57,6 +58,11 @@ export function send<E extends ClientEventName, T = unknown>(
   name: E,
   payload: ClientEventPayload<E> | Record<string, never> = {},
 ): Promise<Ack<T>> {
+  // Practice and tutorial games run on this phone: no server involved.
+  const local = localGame();
+  if (local && useGame.getState().code === LOCAL_CODE) {
+    return Promise.resolve(local.send(name, payload) as Ack<T>);
+  }
   const s = getSocket();
   return new Promise((resolve) => {
     if (!s.connected) {

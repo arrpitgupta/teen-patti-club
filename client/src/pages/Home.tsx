@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { t } from '../i18n';
 import { SERVER_URL } from '../lib/config';
-import { latestSeat } from '../lib/storage';
+import { getPrefs, latestSeat, savePrefs } from '../lib/storage';
+import { Walkthrough } from '../components/learn/Walkthrough';
 import { Icon } from '../components/ui/Icon';
 
 type ServerStatus = 'waking' | 'slow' | 'ready' | 'offline';
@@ -10,6 +11,8 @@ type ServerStatus = 'waking' | 'slow' | 'ready' | 'offline';
 export default function Home() {
   const [status, setStatus] = useState<ServerStatus>('waking');
   const seat = latestSeat();
+  // First launch: the "How to play" cards (skippable; re-open from Learn or the table menu).
+  const [firstLaunch, setFirstLaunch] = useState(() => !getPrefs().seenWalkthrough);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -78,7 +81,22 @@ export default function Home() {
           <span className="font-display text-xl font-bold">{t.home.join}</span>
           <span className="text-[13px] text-ink-300">{t.home.joinHint}</span>
         </Link>
+        <Link
+          to="/learn"
+          className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold text-ink-100 underline-offset-4 active:bg-white/5"
+        >
+          <Icon name="info" size={18} />
+          {t.learn.open}
+        </Link>
       </div>
+      {firstLaunch && (
+        <Walkthrough
+          onDone={() => {
+            savePrefs({ ...getPrefs(), seenWalkthrough: true });
+            setFirstLaunch(false);
+          }}
+        />
+      )}
 
       <div className="flex flex-col items-center gap-2">
         <p

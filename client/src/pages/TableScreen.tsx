@@ -14,6 +14,7 @@ import { IconButton } from '../components/ui/Button';
 import { t } from '../i18n';
 import type { TableModel } from '../lib/model';
 import { useWideLayout } from '../lib/useNow';
+import { LOCAL_CODE, localLabel } from '../practice/localGame';
 import { useChat } from '../store/chat';
 import { useGame } from '../store/game';
 
@@ -42,7 +43,9 @@ export default function TableScreen({ m }: { m: TableModel }) {
           {s.mode === 'physical' ? t.create.physical : t.create.digital}
           {wide && ` · ${s.chipMode === 'openTab' ? t.create.openTab : t.create.buyIn}`}
         </span>
-        <span className="text-sm font-semibold tracking-[0.08em]">{m.pub.code}</span>
+        <span className="text-sm font-semibold tracking-[0.08em]">
+          {m.pub.code === LOCAL_CODE ? localLabel : m.pub.code}
+        </span>
       </div>
       <div className="flex">
         <ChatButton m={m} />

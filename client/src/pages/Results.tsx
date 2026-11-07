@@ -9,6 +9,7 @@ import { t } from '../i18n';
 import { chips, net, rupees } from '../lib/format';
 import type { TableModel } from '../lib/model';
 import { act } from '../lib/socket';
+import { LOCAL_CODE } from '../practice/localGame';
 import { getSeat, saveSeat } from '../lib/storage';
 import { useGame } from '../store/game';
 
@@ -47,6 +48,25 @@ function Rematch({ m }: { m: TableModel }) {
   const alreadyIn = next ? getSeat(next) : undefined;
   const isMe = m.me && !m.me.isOffline;
   if (!isMe) return null;
+  if (m.pub.code === LOCAL_CODE) {
+    // Practice: start a fresh local game instead of a server rematch.
+    return (
+      <section className="flex flex-col gap-2 rounded-3xl bg-panel p-4">
+        <Button
+          variant="ivory"
+          size="lg"
+          icon="repeat"
+          block
+          onClick={() => window.location.reload()}
+        >
+          {t.practice.playAgain}
+        </Button>
+        <Button block onClick={() => navigate('/learn')}>
+          {t.practice.backToLearn}
+        </Button>
+      </section>
+    );
+  }
 
   const go = async () => {
     if (alreadyIn) return navigate(`/g/${alreadyIn.code}`);

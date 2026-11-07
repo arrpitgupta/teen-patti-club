@@ -324,6 +324,119 @@ export const en = {
     awayHint: 'No boot is charged and your balance is kept. Turn it off to play again.',
   },
 
+  learn: {
+    title: 'Learn to play',
+    subtitle: 'New to Teen Patti? Start here. Everything works offline on this phone.',
+    how: 'How to play',
+    howHint: '6 quick cards, 1 minute',
+    tutorial: 'Interactive tutorial',
+    tutorialHint: 'Play one guided round with a coach',
+    practice: 'Practice vs bots',
+    practiceHint: 'A real game against 3 bots, at your own pace',
+    rankings: 'Hand rankings',
+    rankingsHint: 'Which hand beats which',
+    glossary: 'Glossary',
+    glossaryHint: 'Boot, chaal, blind, side show…',
+    open: 'Learn & practice',
+    menu: 'How to play & practice',
+  },
+
+  walkthrough: {
+    skip: 'Skip',
+    next: 'Next',
+    done: 'Let’s play',
+    slide: (i: number, n: number) => `Card ${i} of ${n}`,
+    goalTitle: 'Win the pot',
+    goalBody:
+      'Each round everyone gets 3 cards. You win the pot with the best hand at the show, or by being the last player who hasn’t packed.',
+    bootTitle: 'Boot and pot',
+    bootBody: (boot: string, pot: string) =>
+      `To start a round everyone puts in the boot (e.g. ${boot}). With 4 players the pot starts at ${pot}. Every bet goes into the pot too.`,
+    blindTitle: 'Blind or seen',
+    blindBody: (blind: string, seen: string) =>
+      `Blind players haven’t looked at their cards, so their bets are cheaper (e.g. ${blind}). Once you look, you’re seen and pay double (${seen}).`,
+    betTitle: 'Your turn',
+    betBody:
+      'Chaal matches the current stake, Double raises it as much as allowed, and Pack gives up the round. Hold any button to see what it does and costs.',
+    showTitle: 'Side show and show',
+    showBody:
+      'Side show: a seen player asks the previous seen player to compare cards privately; the lower hand packs. Show: when only 2 players are left, both hands are turned over and the best one wins.',
+    ranksTitle: 'Which hand wins',
+    ranksBody: 'From best to worst. Suits never break a tie.',
+  },
+
+  glossary: {
+    title: 'Glossary',
+    terms: [
+      ['Boot', 'The amount everyone puts into the pot to start a round.'],
+      ['Pot', 'All the chips bet this round. The winner takes it.'],
+      ['Stake', 'The current bet, in blind terms. Blind players bet 1–2× it, seen players 2–4×.'],
+      ['Chaal', 'A bet: matching (or raising) the current stake to stay in.'],
+      ['Blind', 'A player who hasn’t looked at their cards yet. Blind bets cost half.'],
+      ['Seen', 'A player who has looked at their cards. Seen bets cost double.'],
+      ['Pack', 'Giving up the round. You lose what you already put in.'],
+      [
+        'Side show',
+        'A seen player asks the previous seen player to compare cards privately. The lower hand packs; on a tie, the one who asked packs.',
+      ],
+      ['Show', 'When 2 players are left, one pays to see both hands. The best hand wins the pot.'],
+      ['Pot limit', 'If the pot reaches this, everyone still in must show and the best hand wins.'],
+      ['Max chaal', 'The most anyone may bet in one turn.'],
+      ['Dealer', 'Deals the cards; the player to their left acts first. Moves each round.'],
+      ['Trail', 'Three cards of the same rank (e.g. three Kings). The best hand.'],
+      ['Pure sequence', 'Three cards in a row, all the same suit.'],
+      ['Sequence', 'Three cards in a row, any suits.'],
+      ['Color', 'Three cards of the same suit, not in a row.'],
+      ['Pair', 'Two cards of the same rank.'],
+      ['High card', 'None of the above: the highest card decides.'],
+      ['Open tab', 'Everyone starts at 0; at the end the app shows who pays whom.'],
+      ['Buy-in', 'Everyone starts with a fixed stack of chips and can re-buy.'],
+      ['Settlement', 'The shortest list of payments that squares everyone up at the end.'],
+    ] as [string, string][],
+  },
+
+  tutorial: {
+    title: 'Tutorial',
+    coach: 'Coach',
+    step: (i: number, n: number) => `Step ${i} of ${n}`,
+    next: 'Next',
+    skip: 'Skip',
+    practice: 'Practice vs bots',
+    done: 'Done',
+    followCoach: 'Follow the coach: do what the bubble says.',
+    welcome: (boot: string, pot: string) =>
+      `Welcome to a practice round with Asha, Rohit and Dev. Everyone put in the boot of ${boot}, so the pot is ${pot}. Win it with the best hand, or by being the last one left.`,
+    blindChaal: (min: string, max: string) =>
+      `You haven’t looked at your cards, so you’re blind. Blind bets are cheap: you can bet ${min}–${max}. Tap Chaal (${min}).`,
+    thinking: (name: string) => `${name} is thinking…`,
+    ashaSaw: (amount: string, stake: string) =>
+      `Asha looked at her cards, so she’s seen. Seen players pay double: her ${amount} matches your blind ${stake}.`,
+    rohitPacked: 'Rohit packed: he gives up this round and loses what he already put in.',
+    see: 'Your turn again. Look at your cards: tap them.',
+    handName: (hand: string) =>
+      `You have ${hand}, a strong hand! Its name is under your cards. Tap Ranks any time to see every hand, best at the top.`,
+    double: (min: string, max: string) =>
+      `You’re seen now, so bets cost double: ${min}–${max}. With a strong hand, raise: tap Double (${max}).`,
+    sideShow:
+      'Asha asks you for a side show: you two compare cards privately and the lower hand packs. Tap Accept.',
+    sideShowResult: (because: string) =>
+      `${because} So Asha packs. Only the two of you saw those cards.`,
+    show: (cost: string) =>
+      `Only you and Dev are left, so you can ask for a Show: both hands are turned over and the best one takes the whole pot. Tap Show (${cost}).`,
+    won: (pot: string) =>
+      `You won ${pot}! The recap at the bottom explains why. That’s a full round of Teen Patti.`,
+  },
+
+  practice: {
+    title: 'Practice',
+    badge: 'Practice vs bots',
+    notHere: 'That isn’t available in practice games.',
+    playAgain: 'Play again',
+    backToLearn: 'Back to Learn',
+    leave: 'Leave practice',
+    intro: 'Play against 3 bots on this phone. Virtual chips; nothing is saved.',
+  },
+
   push: {
     title: 'Get a buzz on your turn',
     body: 'We’ll notify this phone only when it’s your turn, someone asks you for a side show, or someone nudges you — and only while the app isn’t open. Nothing else.',

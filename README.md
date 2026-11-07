@@ -48,7 +48,16 @@ Open http://localhost:5317. Until the game UI exists, http://localhost:4000/dev 
 _Full steps will be written in the Deploy phase._
 
 1. **MongoDB Atlas** — free M0 cluster, database user, network access, connection string → `MONGODB_URI`.
-2. **Render** (server) — Web Service, root directory `server`, build `corepack enable && pnpm install --frozen-lockfile && pnpm --filter @tpc/server build`, start `pnpm --filter @tpc/server start`, env vars `MONGODB_URI`, `CLIENT_ORIGIN`, `NODE_ENV=production`, health check path `/health`.
+2. **Render** (server) — Web Service, root directory `server`, build `corepack enable && pnpm install --frozen-lockfile && pnpm --filter @tpc/server build`, start `pnpm --filter @tpc/server start`, health check path `/health`. Environment variables:
+
+   | Variable        | Value                                                         |
+   | --------------- | ------------------------------------------------------------- |
+   | `NODE_ENV`      | `production` — **required**. It turns off the `/dev` console. |
+   | `MONGODB_URI`   | Atlas connection string                                       |
+   | `CLIENT_ORIGIN` | Your Vercel URL, e.g. `https://teen-patti-club.vercel.app`    |
+
+   After deploying, check that `https://<your-render-app>/dev` returns **404**.
+
 3. **Vercel** (client) — project root `client`, env var `VITE_SERVER_URL` = Render URL; SPA rewrite to `index.html` is in `client/vercel.json`.
 
 ## License

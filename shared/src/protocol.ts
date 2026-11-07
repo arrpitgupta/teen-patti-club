@@ -56,6 +56,8 @@ export type ServerLogEvent =
   | { type: 'RESUMED' }
   | { type: 'UNDO_REQUESTED'; playerId: PlayerId }
   | { type: 'UNDO_REJECTED' }
+  /** Physical mode: the turn timer ran out for this player (no auto-pack). */
+  | { type: 'TURN_OVERDUE'; playerId: PlayerId }
   /** Sent only to a kicked player's sockets. */
   | { type: 'YOU_WERE_KICKED' };
 
@@ -114,7 +116,11 @@ export interface GameResults {
 export interface TimerInfo {
   playerId: PlayerId;
   /** turn: normal turn timer. grace: player disconnected on their turn (digital). */
-  kind: 'turn' | 'grace';
+  /**
+   * overdue: physical mode only — the turn timer ran out. Nobody is auto-packed; the UI
+   * vibrates, highlights the player and shows "Waiting for <name>".
+   */
+  kind: 'turn' | 'grace' | 'overdue';
   /** Server epoch ms. Compare with `serverNow` to correct for clock skew. */
   deadline: number;
   durationMs: number;

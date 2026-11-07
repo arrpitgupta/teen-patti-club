@@ -692,7 +692,7 @@ export class GameManager {
       });
     }
 
-    if (existing?.kind === 'turn') return; // same turn, keep counting
+    if (existing?.kind === 'turn' || existing?.kind === 'overdue') return; // same turn
     if (existing?.kind === 'grace') {
       // Back within the grace period: resume where the turn timer stopped.
       if (existing.pausedTurnMs === null) return this.setTimer(game, null);
@@ -720,6 +720,12 @@ export class GameManager {
     this.turnTimers.delete(code);
     const game = this.games.get(code);
     if (!game || game.timer !== timer) return;
+    if (game.table.settings.mode === 'physical') {
+      // Physical tables never auto-pack: mark the turn overdue and let the table sort it out.
+      game.timer = { ...timer, kind: 'overdue', deadline: this.now() };
+      this.commit(game, [{ type: 'TURN_OVERDUE', playerId: timer.playerId }], 'none');
+      return;
+    }
     game.timer = null;
     const res = this.apply(game, { type: 'TIMEOUT', playerId: timer.playerId });
     if (!res.ok) {

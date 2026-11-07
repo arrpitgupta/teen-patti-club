@@ -24,7 +24,8 @@ export interface ServerPlayer {
 
 export interface TimerState {
   playerId: string;
-  kind: 'turn' | 'grace';
+  /** overdue: physical-mode turn timer ran out; nothing happens automatically. */
+  kind: 'turn' | 'grace' | 'overdue';
   /** Identifies one "turn" so the timer isn't reset by unrelated changes (e.g. someone seeing). */
   key: string;
   deadline: number;

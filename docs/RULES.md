@@ -10,7 +10,10 @@ SPEC.md §4 defines the core rules. This file records how ambiguous points were 
 - **Max chaal caps the stake.** Blind players pay at most the cap; seen players at most 2× the cap.
 - **Max blinds** counts blind bets in the current round. After N, a player must see before betting or asking for a show. They can always pack.
 - **Pack** only on your own turn. **See cards** any time (except before physical cards are dealt); not a turn action; irreversible.
-- **Turn timer** (default 45 s in digital mode, off in physical mode) runs out → the player packs (or, if they were asked for a side show, it counts as deny). Timer off → the game waits.
+- **Turn timer** (default 45 s in digital mode, off in physical mode).
+  - **Digital:** when it runs out the player packs (or, if they were asked for a side show, it counts as deny).
+  - **Physical:** it never auto-packs or auto-denies. When it runs out the turn becomes _overdue_: the player's phone vibrates, their seat is highlighted, and everyone sees "Waiting for <name>".
+  - Timer off → the game simply waits.
 
 ## Disconnections
 

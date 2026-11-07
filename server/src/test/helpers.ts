@@ -37,6 +37,7 @@ export async function startTestServer(
     port?: number;
     manager?: Partial<ManagerOptions>;
     sockets?: Partial<SocketOptions>;
+    nodeEnv?: 'test' | 'production';
   } = {},
 ): Promise<TestServer> {
   const uri = inject('mongoUri');
@@ -46,7 +47,10 @@ export async function startTestServer(
   const dbName = opts.dbName ?? `test_${process.pid}_${Date.now()}_${dbCounter++}`;
   const store = await MongoGameStore.connect(uri, dbName);
   const server = createServer({
-    config: loadConfig({ NODE_ENV: 'test', CLIENT_ORIGIN: 'http://localhost:5317' }),
+    config: loadConfig({
+      NODE_ENV: opts.nodeEnv ?? 'test',
+      CLIENT_ORIGIN: 'http://localhost:5317',
+    }),
     store,
     managerOptions: { persistDebounceMs: 30, ...opts.manager },
     socketOptions: opts.sockets,

@@ -72,7 +72,8 @@ describe('settle', () => {
       .array(fc.integer({ min: -5000, max: 5000 }), { minLength: 1, maxLength: 10 })
       .map((values) => {
         const nets: Net[] = values.map((v, i) => ({ id: `p${i}`, net: v }));
-        nets.push({ id: 'last', net: -sum(values) });
+        // `0 - x` (not `-x`) so a zero sum gives 0, not -0 (toBe(0) treats -0 as different).
+        nets.push({ id: 'last', net: 0 - sum(values) });
         return nets;
       });
 

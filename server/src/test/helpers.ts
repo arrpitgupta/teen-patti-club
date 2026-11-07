@@ -1,6 +1,9 @@
 import {
   defaultSettings,
   type Ack,
+  type ChatDelivery,
+  type ChatHistory,
+  type ChatMessage,
   type ClientEventName,
   type EventBatch,
   type JoinResult,
@@ -84,6 +87,10 @@ export class TestClient {
   publicStates: PublicGameState[] = [];
   privateStates: PrivateGameState[] = [];
   events: LogEntry[] = [];
+  /** Live chat deliveries (`chat`). */
+  chat: ChatMessage[] = [];
+  /** Every `chat:history` received (one per bind). */
+  chatHistories: ChatMessage[][] = [];
   /** JSON of every message this socket received (state, events, errors and acks). */
   received: string[] = [];
   code?: string;
@@ -105,6 +112,8 @@ export class TestClient {
     this.socket.on('state:public', (s: PublicGameState) => this.publicStates.push(s));
     this.socket.on('state:private', (s: PrivateGameState) => this.privateStates.push(s));
     this.socket.on('event', (b: EventBatch) => this.events.push(...b.entries));
+    this.socket.on('chat', (d: ChatDelivery) => this.chat.push(d.message));
+    this.socket.on('chat:history', (h: ChatHistory) => this.chatHistories.push(h.messages));
     this.socket.onAny((_event: string, ...args: unknown[]) =>
       this.received.push(JSON.stringify(args)),
     );

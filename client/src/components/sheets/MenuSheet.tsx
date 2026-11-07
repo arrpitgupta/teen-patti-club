@@ -4,6 +4,7 @@ import { t } from '../../i18n';
 import type { TableModel } from '../../lib/model';
 import { act } from '../../lib/socket';
 import { getPrefs, savePrefs } from '../../lib/storage';
+import { useChat } from '../../store/chat';
 import { Button } from '../ui/Button';
 import { Sheet } from '../ui/Sheet';
 
@@ -24,6 +25,8 @@ export function MenuSheet({
 }) {
   const navigate = useNavigate();
   const [hints, setHints] = useState(getPrefs().hints);
+  const muted = useChat((s) => s.muted);
+  const setMuted = useChat((s) => s.setMuted);
   const r = m.round;
   const inRound = !!r && r.phase !== 'ENDED';
   const go = (fn: () => void) => {
@@ -59,6 +62,15 @@ export function MenuSheet({
               setHints(e.target.checked);
               savePrefs({ ...getPrefs(), hints: e.target.checked });
             }}
+            className="h-6 w-6 accent-[#F4F1EA]"
+          />
+        </label>
+        <label className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl bg-panel px-4">
+          <span className="text-[15px] font-semibold">{t.menu.muteChat}</span>
+          <input
+            type="checkbox"
+            checked={muted}
+            onChange={(e) => setMuted(e.target.checked)}
             className="h-6 w-6 accent-[#F4F1EA]"
           />
         </label>

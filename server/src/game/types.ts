@@ -1,4 +1,5 @@
 import type {
+  ChatMessage,
   GameResults,
   GameStatus,
   LogEntry,
@@ -54,6 +55,10 @@ export interface ServerGame {
   roundActions: RoundActionRecord[];
   roundStartedAt: number | null;
   timer: TimerState | null;
+  /** Last CHAT_HISTORY_LIMIT messages, saved with the game. */
+  chat: ChatMessage[];
+  /** Id of the last chat message (ids keep increasing even when old ones are dropped). */
+  chatSeq: number;
 }
 
 export type Result<T = null> = { ok: true; data: T } | { ok: false; error: ServerError };

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isCard, type Card } from '../cards/cards';
+import { ChatTextSchema, ReactionSchema } from '../chat';
 import { SettingsSchema } from '../games/teenPatti/settings';
 
 /** 6 characters, no look-alikes (no I, O, 0, 1). */
@@ -64,12 +65,22 @@ export const ClientEventSchemas = {
   'host:pause': z.object({ paused: z.boolean() }).strict(),
   /** The player offered the host role (host away > 2 min) accepts it. */
   'host:claim': empty,
+  /** quick = a preset line (floats over the seat like a reaction). */
+  'chat:send': z.object({ text: ChatTextSchema, quick: z.boolean().optional() }).strict(),
+  'chat:react': z.object({ emoji: ReactionSchema }).strict(),
 } as const;
 
 export type ClientEventName = keyof typeof ClientEventSchemas;
 export type ClientEventPayload<E extends ClientEventName> = z.infer<(typeof ClientEventSchemas)[E]>;
 
-export const SERVER_EVENTS = ['state:public', 'state:private', 'event', 'error'] as const;
+export const SERVER_EVENTS = [
+  'state:public',
+  'state:private',
+  'event',
+  'error',
+  'chat',
+  'chat:history',
+] as const;
 export type ServerEventName = (typeof SERVER_EVENTS)[number];
 
 export function isClientEventName(name: string): name is ClientEventName {

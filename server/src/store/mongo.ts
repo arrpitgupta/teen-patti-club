@@ -37,6 +37,8 @@ const GameSchema = new Schema(
     results: Schema.Types.Mixed,
     roundActions: Schema.Types.Mixed,
     roundStartedAt: Date,
+    chat: Schema.Types.Mixed,
+    chatSeq: Number,
     createdAt: Date,
     updatedAt: Date,
     endedAt: { type: Date, default: null },

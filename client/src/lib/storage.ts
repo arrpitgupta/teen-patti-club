@@ -66,10 +66,26 @@ export function saveProfile(p: Profile): void {
 
 export interface Prefs {
   hints: boolean;
+  /** No chat toasts, bubbles or unread badge (messages still show in the drawer). */
+  chatMuted: boolean;
 }
 
 export function getPrefs(): Prefs {
-  return { hints: true, ...readJson<Partial<Prefs>>(PREFS, {}) };
+  return { hints: true, chatMuted: false, ...readJson<Partial<Prefs>>(PREFS, {}) };
+}
+
+const CHAT_READ = 'tpc.chatRead';
+
+/** Id of the last chat message this device has seen, per game code. */
+export function getChatRead(code: string): number {
+  return readJson<Record<string, number>>(CHAT_READ, {})[code] ?? 0;
+}
+
+export function saveChatRead(code: string, id: number): void {
+  const all = readJson<Record<string, number>>(CHAT_READ, {});
+  // Keep the map small: only the most recent games.
+  const entries = Object.entries({ ...all, [code]: id }).slice(-20);
+  writeJson(CHAT_READ, Object.fromEntries(entries));
 }
 
 export function savePrefs(p: Prefs): void {

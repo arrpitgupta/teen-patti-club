@@ -1,4 +1,5 @@
 import type {
+  ChatMessage,
   GameResults,
   GameStatus,
   LogEntry,
@@ -39,6 +40,8 @@ export interface GameSnapshot {
   results: GameResults | null;
   roundActions: RoundActionRecord[];
   roundStartedAt: number | null;
+  chat: ChatMessage[];
+  chatSeq: number;
   createdAt: number;
   updatedAt: number;
   endedAt: number | null;

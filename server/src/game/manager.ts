@@ -1,5 +1,6 @@
 import {
   applyAction,
+  CHAT_HISTORY_LIMIT,
   computeNets,
   createDeck,
   createTable,
@@ -9,6 +10,8 @@ import {
   rankByNet,
   settle,
   shuffle,
+  type ChatKind,
+  type ChatMessage,
   type ClientEventName,
   type ClientEventPayload,
   type GameLogEvent,
@@ -84,6 +87,10 @@ const ROUND_LOGGED: ReadonlySet<string> = new Set([
 
 type ChangeListener = (game: ServerGame, entries: LogEntry[]) => void;
 type KickListener = (code: string, playerId: string) => void;
+type ChatListener = (game: ServerGame, message: ChatMessage) => void;
+
+/** Preset lines are short; longer text must go as a normal message. */
+const QUICK_MAX_CHARS = 40;
 
 export interface PlayerInput {
   name: string;
@@ -101,6 +108,7 @@ export class GameManager {
   readonly opts: ManagerOptions;
   onChange: ChangeListener = () => {};
   onKick: KickListener = () => {};
+  onChat: ChatListener = () => {};
 
   private readonly games = new Map<string, ServerGame>();
   private readonly turnTimers = new Map<string, NodeJS.Timeout>();
@@ -195,6 +203,8 @@ export class GameManager {
       roundActions: [],
       roundStartedAt: null,
       timer: null,
+      chat: [],
+      chatSeq: 0,
     };
     this.games.set(code, game);
     const added = this.addPlayer(game, input, hashToken(token), false, playerId);
@@ -462,9 +472,45 @@ export class GameManager {
       case 'game:end':
         return isHost ? this.endGame(game) : needHost();
 
+      case 'chat:send': {
+        const { text, quick } = payload as ClientEventPayload<'chat:send'>;
+        if (quick && text.length > QUICK_MAX_CHARS) {
+          return fail('INVALID_PAYLOAD', 'Quick lines are short. Send it as a message instead.');
+        }
+        return this.postChat(game, me, quick ? 'quick' : 'text', text);
+      }
+      case 'chat:react': {
+        const { emoji } = payload as ClientEventPayload<'chat:react'>;
+        return this.postChat(game, me, 'reaction', emoji);
+      }
+
       default:
         return fail('INVALID_PAYLOAD', `Unexpected event: ${name}`);
     }
+  }
+
+  /** Store a chat message with the game and hand it to the socket layer for delivery. */
+  private postChat(
+    game: ServerGame,
+    me: ServerPlayer,
+    kind: ChatKind,
+    text: string,
+  ): Result<ChatMessage> {
+    const message: ChatMessage = {
+      id: ++game.chatSeq,
+      at: this.now(),
+      playerId: me.id,
+      kind,
+      text,
+    };
+    game.chat.push(message);
+    if (game.chat.length > CHAT_HISTORY_LIMIT) {
+      game.chat.splice(0, game.chat.length - CHAT_HISTORY_LIMIT);
+    }
+    game.updatedAt = message.at;
+    this.schedulePersist(game);
+    this.onChat(game, message);
+    return ok(message);
   }
 
   /** Banker mode: the host may act for offline seats and for disconnected players. */
@@ -844,6 +890,8 @@ export class GameManager {
       results: game.results,
       roundActions: game.roundActions,
       roundStartedAt: game.roundStartedAt,
+      chat: game.chat,
+      chatSeq: game.chatSeq,
       createdAt: game.createdAt,
       updatedAt: game.updatedAt,
       endedAt: game.endedAt,
@@ -883,6 +931,8 @@ export class GameManager {
       roundActions: s.roundActions ?? [],
       roundStartedAt: s.roundStartedAt ?? null,
       timer: null,
+      chat: s.chat ?? [],
+      chatSeq: s.chatSeq ?? s.chat?.at(-1)?.id ?? 0,
     };
   }
 }

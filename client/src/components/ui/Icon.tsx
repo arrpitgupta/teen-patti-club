@@ -90,6 +90,21 @@ const PATHS = {
     </>
   ),
   door: <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />,
+  chat: <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z" />,
+  send: <path d="M4 12l16-8-6 16-2.5-6.5L4 12z" />,
+  bell: (
+    <>
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16z" />
+      <path d="M10 21h4" />
+    </>
+  ),
+  bellOff: (
+    <>
+      <path d="M3 3l18 18" />
+      <path d="M8.2 5.4A6 6 0 0 1 18 11v4M6 11v5l-1.5 2H17" />
+      <path d="M10 21h4" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS;

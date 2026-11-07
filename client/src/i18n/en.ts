@@ -275,6 +275,35 @@ export const en = {
     leaveConfirm: 'Leave this game? Your balance is kept for the final settlement.',
     hostTools: 'Host tools',
     code: 'Game code',
+    muteChat: 'Mute chat',
+  },
+
+  chat: {
+    title: 'Table chat',
+    open: 'Open chat',
+    unread: (count: number) => `${count} new ${count === 1 ? 'message' : 'messages'}`,
+    empty: 'No messages yet. Say hi!',
+    placeholder: 'Message the table',
+    send: 'Send',
+    react: 'React',
+    quick: 'Quick lines',
+    mute: 'Mute chat',
+    muted: 'Chat is muted: no pop-ups or bubbles. Messages still show here.',
+    unmute: 'Unmute',
+    charsLeft: (left: number) => `${left} left`,
+    toast: (name: string, text: string) => `${name}: ${text}`,
+    reactionLabel: (emoji: string) => `Send ${emoji}`,
+    /** One-tap lines. Edit freely: anything up to 40 characters. */
+    presets: [
+      'Pack kar de!',
+      'Show kar!',
+      'Jaldi chal!',
+      'Chaal badha!',
+      'Blind pe hi khelega?',
+      'Bas kar bhai',
+      'Kya patta hai!',
+      'Lucky!',
+    ],
   },
 
   host: {

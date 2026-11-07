@@ -1,5 +1,7 @@
 import type {
   Ack,
+  ChatDelivery,
+  ChatHistory,
   ClientEventName,
   ClientEventPayload,
   EventBatch,
@@ -9,6 +11,7 @@ import type {
 } from '@tpc/shared';
 import { io, type Socket } from 'socket.io-client';
 import { t } from '../i18n';
+import { useChat } from '../store/chat';
 import { useGame } from '../store/game';
 import { SERVER_URL } from './config';
 import { getSeat } from './storage';
@@ -39,6 +42,12 @@ export function getSocket(): Socket {
   s.on('state:private', (state: PrivateGameState) => store().applyPrivate(state));
   s.on('event', (batch: EventBatch) => store().handleEvents(batch.entries));
   s.on('error', (err: ServerError) => store().pushError(err.message));
+  s.on('chat:history', (h: ChatHistory) => {
+    if (h.code === store().code) useChat.getState().applyHistory(h.code, h.messages);
+  });
+  s.on('chat', (d: ChatDelivery) => {
+    if (d.code === store().code) useChat.getState().receive(d.code, d.message);
+  });
   socket = s;
   return s;
 }

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { ChatDrawer } from '../components/chat/ChatDrawer';
+import { ChatButton } from '../components/chat/SeatFloat';
 import { ComparisonSheet } from '../components/physical/ComparisonSheet';
 import { HostSheet } from '../components/sheets/HostSheet';
 import { LogSheet } from '../components/sheets/LogSheet';
@@ -12,6 +14,7 @@ import { IconButton } from '../components/ui/Button';
 import { t } from '../i18n';
 import type { TableModel } from '../lib/model';
 import { useWideLayout } from '../lib/useNow';
+import { useChat } from '../store/chat';
 import { useGame } from '../store/game';
 
 type SheetName = 'menu' | 'rankings' | 'log' | 'host' | null;
@@ -21,7 +24,10 @@ export default function TableScreen({ m }: { m: TableModel }) {
   const [sheet, setSheet] = useState<SheetName>(null);
   useEffect(() => {
     useGame.setState({ inlineToasts: true });
-    return () => useGame.setState({ inlineToasts: false });
+    return () => {
+      useGame.setState({ inlineToasts: false });
+      useChat.getState().setOpen(false);
+    };
   }, []);
   const close = () => setSheet(null);
   const s = m.pub.table.settings;
@@ -39,6 +45,7 @@ export default function TableScreen({ m }: { m: TableModel }) {
         <span className="text-sm font-semibold tracking-[0.08em]">{m.pub.code}</span>
       </div>
       <div className="flex">
+        <ChatButton m={m} />
         <IconButton icon="log" label={t.menu.log} onClick={() => setSheet('log')} />
         {m.isHost ? (
           <IconButton icon="crown" label={t.menu.hostTools} onClick={() => setSheet('host')} />
@@ -67,6 +74,7 @@ export default function TableScreen({ m }: { m: TableModel }) {
         a23Rank={s.a23Rank}
       />
       <LogSheet open={sheet === 'log'} onClose={close} m={m} />
+      <ChatDrawer m={m} wide={wide} />
       {m.isHost && <HostSheet open={sheet === 'host'} onClose={close} m={m} />}
     </>
   );

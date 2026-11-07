@@ -2,6 +2,8 @@ import {
   ClientEventSchemas,
   parseClientEvent,
   type Ack,
+  type ChatDelivery,
+  type ChatHistory,
   type ClientEventName,
   type ClientEventPayload,
   type EventBatch,
@@ -23,9 +25,18 @@ export interface SocketOptions {
   /** Burst size and refill rate of the per-socket rate limit. */
   rateCapacity: number;
   ratePerSec: number;
+  /** Extra, tighter limit for chat messages and reactions. */
+  chatCapacity: number;
+  chatPerSec: number;
 }
 
-const DEFAULTS: SocketOptions = { rateCapacity: 30, ratePerSec: 15 };
+const DEFAULTS: SocketOptions = {
+  rateCapacity: 30,
+  ratePerSec: 15,
+  // A burst of 6 (e.g. a few reactions in a row), then one every 1.5 s.
+  chatCapacity: 6,
+  chatPerSec: 1 / 1.5,
+};
 
 const gameRoom = (code: string) => `game:${code}`;
 
@@ -34,7 +45,7 @@ export function registerSockets(
   manager: GameManager,
   opts: Partial<SocketOptions> = {},
 ): void {
-  const { rateCapacity, ratePerSec } = { ...DEFAULTS, ...opts };
+  const { rateCapacity, ratePerSec, chatCapacity, chatPerSec } = { ...DEFAULTS, ...opts };
   /** code → playerId → that player's sockets (a player may have several tabs). */
   const registry = new Map<string, Map<string, Set<Socket>>>();
 
@@ -54,6 +65,11 @@ export function registerSockets(
       const batch: EventBatch = { entries };
       io.to(gameRoom(game.code)).emit('event', batch);
     }
+  };
+
+  manager.onChat = (game, message) => {
+    const delivery: ChatDelivery = { code: game.code, message };
+    io.to(gameRoom(game.code)).emit('chat', delivery);
   };
 
   manager.onKick = (code, playerId) => {
@@ -85,6 +101,9 @@ export function registerSockets(
     // Send this socket the current state right away (setConnected only broadcasts on change).
     socket.emit('state:public', publicState(game, manager.opts.now()));
     socket.emit('state:private', privateState(game, playerId));
+    // Everything said while this socket was away (or before it joined).
+    const history: ChatHistory = { code, messages: game.chat };
+    socket.emit('chat:history', history);
     manager.setConnected(code, playerId, true);
   }
 
@@ -107,6 +126,7 @@ export function registerSockets(
 
   io.on('connection', (socket) => {
     const bucket = new TokenBucket(rateCapacity, ratePerSec);
+    const chatBucket = new TokenBucket(chatCapacity, chatPerSec);
 
     for (const name of Object.keys(ClientEventSchemas) as ClientEventName[]) {
       socket.on(name, async (payload: unknown, maybeAck?: unknown) => {
@@ -126,6 +146,9 @@ export function registerSockets(
         if (!bucket.take()) return error('RATE_LIMITED', 'Slow down a little.');
         const parsed = parseClientEvent(name, payload);
         if (!parsed.ok) return error('INVALID_PAYLOAD', parsed.message);
+        if (name.startsWith('chat:') && !chatBucket.take()) {
+          return error('RATE_LIMITED', "You're sending messages too fast. Wait a moment.");
+        }
 
         try {
           const data = socket.data as SocketData;

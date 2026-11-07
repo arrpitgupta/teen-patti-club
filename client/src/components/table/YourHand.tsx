@@ -4,6 +4,7 @@ import { chips, net } from '../../lib/format';
 import type { TableModel } from '../../lib/model';
 import { act } from '../../lib/socket';
 import { useMediaQuery, useServerNow } from '../../lib/useNow';
+import { SeatFloat } from '../chat/SeatFloat';
 import { Avatar } from '../ui/Avatar';
 import { Icon } from '../ui/Icon';
 import { CardFace, CardSlot, Fan, FlipCard } from '../ui/PlayingCard';
@@ -59,13 +60,16 @@ export function YourHand({
 
       <div className="grid w-full grid-cols-[64px_1fr_64px] items-center gap-2 px-2.5">
         <div className="flex flex-col items-center gap-1">
-          <Avatar
-            id={me.id}
-            name={me.name}
-            avatar={me.avatar}
-            size={40}
-            ring={myTurn ? 'you' : null}
-          />
+          <span className="relative">
+            <Avatar
+              id={me.id}
+              name={me.name}
+              avatar={me.avatar}
+              size={40}
+              ring={myTurn ? 'you' : null}
+            />
+            <SeatFloat playerId={me.id} />
+          </span>
           <span className={`tabular font-display text-[15px] font-bold ${amountColor}`}>
             {amountText}
           </span>

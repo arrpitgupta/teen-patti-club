@@ -11,4 +11,5 @@ export * from './evaluator/evaluator';
 export * from './games/teenPatti';
 export * from './settlement/settlement';
 export * from './schemas/socket';
+export * from './chat';
 export * from './protocol';

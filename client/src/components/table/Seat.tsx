@@ -1,6 +1,7 @@
 import type { PublicPlayer, PublicRoundPlayer } from '@tpc/shared';
 import { t } from '../../i18n';
 import { chips, net } from '../../lib/format';
+import { SeatFloat } from '../chat/SeatFloat';
 import { Avatar } from '../ui/Avatar';
 import { Icon } from '../ui/Icon';
 import { StatusPill, type SeatStatus } from '../ui/StatusPill';
@@ -112,6 +113,7 @@ export function Seat(props: SeatProps) {
             <Icon name="crown" size={11} strokeWidth={2.4} />
           </span>
         )}
+        <SeatFloat playerId={player.id} />
       </div>
       {compact ? (
         <>

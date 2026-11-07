@@ -1,6 +1,6 @@
 # CLAUDE.md — Teen Patti Club
 
-Real-time, mobile-first Teen Patti web app with **virtual chips only**. Full spec: [SPEC.md](SPEC.md) — read it before changing behaviour. Rule decisions that SPEC left open are in [docs/RULES.md](docs/RULES.md) and are binding. Work proceeds in the phases in SPEC §13; stop for user confirmation after each phase.
+Real-time, mobile-first Teen Patti web app with **virtual chips only**. Full spec: [SPEC.md](SPEC.md) — read it before changing behaviour. Rule decisions that SPEC left open are in [docs/RULES.md](docs/RULES.md) and are binding. Features added or dropped after SPEC (chat, rematch, card scanning dropped, backlog…) are in [docs/ROADMAP.md](docs/ROADMAP.md). Work proceeds in the phases in SPEC §13; stop for user confirmation after each phase.
 
 ## Layout (pnpm workspaces)
 
@@ -51,7 +51,8 @@ pnpm is provided via corepack (`packageManager: pnpm@9.15.0`). On this machine t
 - `store/game.ts` (Zustand): public/private state (stale versions dropped), toasts, haptics on your turn / overdue / win.
 - `pages/`: Home, CreateGame, JoinGame (code / link / QR), GamePage → LobbyRoom | TableScreen | Results.
 - `components/table/`: TableView (oval, seats placed by `layout.ts`, markers, centre), Seat, YourHand, ActionDock (3 s Pack undo, long-press info), BetSheet, SideShowPrompt, DealPanel, RoundRecap. `components/physical/`: ComparisonSheet (only the picker chooses winners; others confirm/dispute read-only), CardPicker.
-- All copy in `i18n/en.ts`.
+- All copy in `i18n/en.ts` (including the chat preset lines, `t.chat.presets`).
+- Chat: server keeps the last 200 messages on the game (`chat`, `chatSeq`), sends `chat` per message and `chat:history` on every bind (that is how missed messages arrive). Separate chat token bucket in `sockets.ts`. Client `store/chat.ts` (unread = typed messages from others since `tpc.chatRead`; floats for reactions/presets; mute in prefs), `components/chat/`.
 - Dev on a phone: the client talks to `http(s)://<same host>:4000` unless `VITE_SERVER_URL` is set; Vite injects `__LAN_ORIGIN__` so QR codes work when the host opened `localhost`. The server allows private-LAN origins outside production.
 - E2E: `pnpm test:e2e` (Playwright; starts `server dev:memory` on :4100 with in-memory Mongo and Vite on :5400). Screenshots land in `client/e2e/screens/` (git-ignored) — look at them after UI changes.
 

@@ -53,7 +53,14 @@ No MongoDB handy? `pnpm --filter @tpc/server dev:memory` runs the server with an
 _Full steps will be written in the Deploy phase._
 
 1. **MongoDB Atlas** — free M0 cluster, database user, network access, connection string → `MONGODB_URI`.
-2. **Render** (server) — Web Service, root directory `server`, build `corepack enable && pnpm install --frozen-lockfile && pnpm --filter @tpc/server build`, start `pnpm --filter @tpc/server start`, health check path `/health`. Environment variables:
+2. **Render** (server) — Web Service with these settings:
+   - **Root directory:** leave empty (repo root, so the pnpm workspace and `@tpc/shared` are available).
+   - **Build command:** `corepack enable && NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @tpc/server build`
+     (`NODE_ENV=development` for the install only, so the build tools in devDependencies are installed even though the service runs with `NODE_ENV=production`).
+   - **Start command:** `pnpm --filter @tpc/server start`
+   - **Health check path:** `/health`
+
+   Environment variables:
 
    | Variable        | Value                                                         |
    | --------------- | ------------------------------------------------------------- |
@@ -63,7 +70,11 @@ _Full steps will be written in the Deploy phase._
 
    After deploying, check that `https://<your-render-app>/dev` returns **404**.
 
-3. **Vercel** (client) — project root `client`, env var `VITE_SERVER_URL` = Render URL; SPA rewrite to `index.html` is in `client/vercel.json`.
+3. **Vercel** (client) — import the repo and set:
+   - **Root directory:** `client`
+   - **Config variable** (Settings → Environment Variables): `VITE_SERVER_URL` = your Render URL, e.g. `https://teen-patti-club.onrender.com`. It is baked in at build time, so redeploy after changing it.
+
+   The SPA rewrite to `index.html` is in `client/vercel.json`.
 
 ## License
 

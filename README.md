@@ -34,6 +34,8 @@ Open http://localhost:5317.
 
 **On your phone (same Wi-Fi):** open `http://<this computer's LAN IP>:5317` (Vite prints it as "Network"). The client finds the server on the same address automatically, and invite QR codes use your LAN address even if the host opened `localhost`. On Windows, allow Node through the firewall for private networks the first time.
 
+The deployed site is an installable app (PWA): Android shows "Install the app" on the home screen; on iPhone use Share → Add to Home Screen. It opens full screen, keeps the screen awake during a game, and the Learn section (tutorial, practice vs bots) works offline.
+
 "Your turn" notifications need a secure page: they work on `localhost` and on the deployed https site, not on `http://<LAN IP>` (browsers only allow push on secure origins). iPhones need the app added to the Home Screen first.
 
 No MongoDB handy? `pnpm --filter @tpc/server dev:memory` runs the server with an in-memory database (data is lost when it stops). Until the game UI exists, http://localhost:4000/dev is a developer console for playing through the server API (one tab per player). To test on a phone on the same Wi-Fi, use the network URL Vite prints and set `CLIENT_ORIGIN` / `VITE_SERVER_URL` to your machine's LAN IP.

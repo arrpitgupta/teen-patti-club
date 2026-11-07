@@ -4,6 +4,8 @@ import { t } from '../i18n';
 import { SERVER_URL } from '../lib/config';
 import { getPrefs, latestSeat, savePrefs } from '../lib/storage';
 import { Walkthrough } from '../components/learn/Walkthrough';
+import { Sheet } from '../components/ui/Sheet';
+import { useInstall } from '../lib/pwa';
 import { Icon } from '../components/ui/Icon';
 
 type ServerStatus = 'waking' | 'slow' | 'ready' | 'offline';
@@ -13,6 +15,8 @@ export default function Home() {
   const seat = latestSeat();
   // First launch: the "How to play" cards (skippable; re-open from Learn or the table menu).
   const [firstLaunch, setFirstLaunch] = useState(() => !getPrefs().seenWalkthrough);
+  const installer = useInstall();
+  const [iosHelp, setIosHelp] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,6 +93,24 @@ export default function Home() {
           {t.learn.open}
         </Link>
       </div>
+      {installer.mode && (
+        <button
+          type="button"
+          onClick={() =>
+            installer.mode === 'prompt' ? void installer.install() : setIosHelp(true)
+          }
+          className="-mt-6 flex min-h-[52px] w-full max-w-sm items-center gap-3 rounded-2xl bg-panel px-4 text-left"
+        >
+          <img src="/icons/icon-192.png" alt="" className="h-9 w-9 rounded-lg" />
+          <span className="flex flex-col">
+            <span className="text-[15px] font-semibold">{t.install.button}</span>
+            <span className="text-xs text-ink-300">{t.install.hint}</span>
+          </span>
+        </button>
+      )}
+      <Sheet open={iosHelp} onClose={() => setIosHelp(false)} title={t.install.iosTitle}>
+        <p className="text-[15px] leading-relaxed text-ink-300">{t.install.iosBody}</p>
+      </Sheet>
       {firstLaunch && (
         <Walkthrough
           onDone={() => {

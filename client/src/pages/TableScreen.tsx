@@ -13,6 +13,7 @@ import { YourHand } from '../components/table/YourHand';
 import { IconButton } from '../components/ui/Button';
 import { t } from '../i18n';
 import type { TableModel } from '../lib/model';
+import { useWakeLock } from '../lib/pwa';
 import { useWideLayout } from '../lib/useNow';
 import { LOCAL_CODE, localLabel } from '../practice/localGame';
 import { useChat } from '../store/chat';
@@ -23,6 +24,8 @@ type SheetName = 'menu' | 'rankings' | 'log' | 'host' | null;
 export default function TableScreen({ m }: { m: TableModel }) {
   const wide = useWideLayout();
   const [sheet, setSheet] = useState<SheetName>(null);
+  // Keep the screen on during a game (Screen Wake Lock API).
+  useWakeLock(m.pub.status === 'active');
   useEffect(() => {
     useGame.setState({ inlineToasts: true });
     return () => {

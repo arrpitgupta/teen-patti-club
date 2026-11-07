@@ -325,6 +325,14 @@ export const en = {
     awayHint: 'No boot is charged and your balance is kept. Turn it off to play again.',
   },
 
+  install: {
+    button: 'Install the app',
+    hint: 'Full screen, on your home screen, works offline for practice',
+    iosTitle: 'Add to your Home Screen',
+    iosBody:
+      'In Safari, tap the Share button (square with an arrow), then “Add to Home Screen”. The app then opens full screen and can notify you on your turn.',
+  },
+
   learn: {
     title: 'Learn to play',
     subtitle: 'New to Teen Patti? Start here. Everything works offline on this phone.',

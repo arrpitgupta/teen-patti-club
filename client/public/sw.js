@@ -1,9 +1,91 @@
-/* global self, URL */
-/* Teen Patti Club service worker: "your turn" notifications.
- * Phase 6 (PWA) extends this file with the offline app shell. */
+/* global self, URL, caches, fetch, Response */
+/* Teen Patti Club service worker:
+ * - offline app shell (the app opens without a connection; practice and the tutorial work offline)
+ * - "your turn" notifications (web push)
+ * The game server (another origin) is never cached. */
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+const SHELL = 'tpc-shell-v1';
+const PRECACHE = [
+  '/',
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+];
+const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches
+      .open(SHELL)
+      .then((c) => c.addAll(PRECACHE))
+      .catch(() => undefined)
+      .then(() => self.skipWaiting()),
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      for (const key of await caches.keys()) if (key !== SHELL) await caches.delete(key);
+      await self.clients.claim();
+    })(),
+  );
+});
+
+async function cacheFirst(req) {
+  const hit = await caches.match(req);
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok) (await caches.open(SHELL)).put(req, res.clone());
+  return res;
+}
+
+async function staleWhileRevalidate(req) {
+  const cache = await caches.open(SHELL);
+  const hit = await cache.match(req);
+  const update = fetch(req)
+    .then((res) => {
+      if (res.ok || res.type === 'opaque') cache.put(req, res.clone());
+      return res;
+    })
+    .catch(() => hit);
+  return hit ?? update;
+}
+
+async function networkFirstPage(req) {
+  try {
+    const res = await fetch(req);
+    if (res.ok) (await caches.open(SHELL)).put('/', res.clone());
+    return res;
+  } catch {
+    return (await caches.match('/')) ?? Response.error();
+  }
+}
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (req.mode === 'navigate' && url.origin === self.location.origin) {
+    // Every route is the single-page app.
+    event.respondWith(networkFirstPage(req));
+  } else if (url.origin === self.location.origin && url.pathname.startsWith('/assets/')) {
+    // Built files have content hashes: safe to cache forever.
+    event.respondWith(cacheFirst(req));
+  } else if (
+    (url.origin === self.location.origin &&
+      (url.pathname.startsWith('/icons/') ||
+        url.pathname === '/favicon.svg' ||
+        url.pathname === '/manifest.webmanifest')) ||
+    FONT_HOSTS.includes(url.hostname)
+  ) {
+    event.respondWith(staleWhileRevalidate(req));
+  }
+  // Everything else (the game server, dev modules) goes straight to the network.
+});
+
+// ---------- "Your turn" notifications ----------
 
 self.addEventListener('push', (event) => {
   let msg = { title: 'Teen Patti Club', body: 'It’s your turn.', tag: 'tpc', url: '/' };
@@ -21,8 +103,8 @@ self.addEventListener('push', (event) => {
         body: msg.body,
         tag: msg.tag,
         renotify: true,
-        icon: '/favicon.svg',
-        badge: '/favicon.svg',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
         vibrate: [60, 60, 60],
         data: { url: msg.url },
       });

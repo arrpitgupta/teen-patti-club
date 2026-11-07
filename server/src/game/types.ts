@@ -7,6 +7,7 @@ import type {
   ServerError,
   TableState,
 } from '@tpc/shared';
+import type { PushSubscriptionData } from '../push';
 import type { RoundActionRecord } from '../store/types';
 
 export interface ServerPlayer {
@@ -17,6 +18,8 @@ export interface ServerPlayer {
   isOffline: boolean;
   joinedAt: number;
   leftAt: number | null;
+  /** Web push subscriptions ("your turn"), one per device. Never sent to clients. */
+  push: PushSubscriptionData[];
   // Runtime only (not persisted):
   connected: boolean;
   connectedSince: number | null;

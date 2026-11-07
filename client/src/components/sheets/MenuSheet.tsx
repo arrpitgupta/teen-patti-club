@@ -1,12 +1,51 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../../i18n';
 import type { TableModel } from '../../lib/model';
 import { act, actOk } from '../../lib/socket';
+import { disablePush, enablePush, pushAvailable, pushPermission } from '../../lib/push';
 import { getPrefs, savePrefs } from '../../lib/storage';
 import { useChat } from '../../store/chat';
 import { Button } from '../ui/Button';
 import { Sheet } from '../ui/Sheet';
+
+/** "Your turn" notifications for this phone (hidden where the browser can't do push). */
+function PushToggle() {
+  const [available, setAvailable] = useState(false);
+  const [perm, setPerm] = useState(pushPermission());
+  const [on, setOn] = useState(perm === 'granted' && !getPrefs().pushOff);
+  useEffect(() => {
+    void pushAvailable().then(setAvailable);
+  }, []);
+  if (!available) return null;
+  const blocked = perm === 'denied';
+  return (
+    <label className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl bg-panel px-4 py-2.5">
+      <span className="flex flex-col gap-0.5">
+        <span className="text-[15px] font-semibold">{t.push.menu}</span>
+        <span className="text-[13px] text-ink-300">
+          {blocked ? t.push.blocked : t.push.menuHint}
+        </span>
+      </span>
+      <input
+        type="checkbox"
+        checked={on}
+        disabled={blocked}
+        onChange={(e) => {
+          const want = e.target.checked;
+          setOn(want);
+          if (want) {
+            void enablePush().then((p) => {
+              setPerm(p);
+              setOn(p === 'granted');
+            });
+          } else void disablePush();
+        }}
+        className="h-6 w-6 shrink-0 accent-[#F4F1EA]"
+      />
+    </label>
+  );
+}
 
 export function MenuSheet({
   open,
@@ -84,6 +123,7 @@ export function MenuSheet({
             className="h-6 w-6 shrink-0 accent-[#F4F1EA]"
           />
         </label>
+        <PushToggle />
         <label className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl bg-panel px-4">
           <span className="text-[15px] font-semibold">{t.menu.muteChat}</span>
           <input

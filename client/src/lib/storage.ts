@@ -69,10 +69,20 @@ export interface Prefs {
   hints: boolean;
   /** No chat toasts, bubbles or unread badge (messages still show in the drawer). */
   chatMuted: boolean;
+  /** The "your turn" notification prompt was answered (or dismissed). */
+  pushAsked: boolean;
+  /** The player turned notifications off. */
+  pushOff: boolean;
 }
 
 export function getPrefs(): Prefs {
-  return { hints: true, chatMuted: false, ...readJson<Partial<Prefs>>(PREFS, {}) };
+  return {
+    hints: true,
+    chatMuted: false,
+    pushAsked: false,
+    pushOff: false,
+    ...readJson<Partial<Prefs>>(PREFS, {}),
+  };
 }
 
 export interface RulePreset {

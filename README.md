@@ -34,6 +34,8 @@ Open http://localhost:5317.
 
 **On your phone (same Wi-Fi):** open `http://<this computer's LAN IP>:5317` (Vite prints it as "Network"). The client finds the server on the same address automatically, and invite QR codes use your LAN address even if the host opened `localhost`. On Windows, allow Node through the firewall for private networks the first time.
 
+"Your turn" notifications need a secure page: they work on `localhost` and on the deployed https site, not on `http://<LAN IP>` (browsers only allow push on secure origins). iPhones need the app added to the Home Screen first.
+
 No MongoDB handy? `pnpm --filter @tpc/server dev:memory` runs the server with an in-memory database (data is lost when it stops). Until the game UI exists, http://localhost:4000/dev is a developer console for playing through the server API (one tab per player). To test on a phone on the same Wi-Fi, use the network URL Vite prints and set `CLIENT_ORIGIN` / `VITE_SERVER_URL` to your machine's LAN IP.
 
 ## Scripts
@@ -62,11 +64,13 @@ _Full steps will be written in the Deploy phase._
 
    Environment variables:
 
-   | Variable        | Value                                                         |
-   | --------------- | ------------------------------------------------------------- |
-   | `NODE_ENV`      | `production` — **required**. It turns off the `/dev` console. |
-   | `MONGODB_URI`   | Atlas connection string                                       |
-   | `CLIENT_ORIGIN` | Your Vercel URL, e.g. `https://teen-patti-club.vercel.app`    |
+   | Variable                                 | Value                                                                                                           |
+   | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+   | `NODE_ENV`                               | `production` — **required**. It turns off the `/dev` console.                                                   |
+   | `MONGODB_URI`                            | Atlas connection string                                                                                         |
+   | `CLIENT_ORIGIN`                          | Your Vercel URL, e.g. `https://teen-patti-club.vercel.app`                                                      |
+   | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | From `npx web-push generate-vapid-keys` (run once, keep them). Without them, "your turn" notifications are off. |
+   | `VAPID_SUBJECT`                          | `mailto:` address or `https://` URL push services can contact                                                   |
 
    After deploying, check that `https://<your-render-app>/dev` returns **404**.
 

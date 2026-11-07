@@ -21,6 +21,7 @@ export interface StoredPlayer {
   totalBuyIn: number;
   joinedAt: number;
   leftAt: number | null;
+  push?: { endpoint: string; keys: { p256dh: string; auth: string } }[];
 }
 
 /** Everything needed to rebuild a live game after a restart. */

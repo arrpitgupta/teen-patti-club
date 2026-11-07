@@ -14,6 +14,13 @@ export const AvatarSchema = z.string().min(1).max(32);
 export const ChipAmountSchema = z.number().int().positive().max(1_000_000_000);
 export const CardSchema = z.custom<Card>((v) => isCard(v), 'Invalid card');
 
+/** A browser PushSubscription (toJSON()). Stored server-side only. */
+export const PushSubscriptionSchema = z.object({
+  endpoint: z.string().url().max(2000).startsWith('https://'),
+  expirationTime: z.number().nullable().optional(),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
+});
+
 /** Banker mode: the host may act for an offline seat. */
 const actAs = { actAs: PlayerIdSchema.optional() };
 const empty = z.object({}).strict();
@@ -80,6 +87,9 @@ export const ClientEventSchemas = {
   'chat:react': z.object({ emoji: ReactionSchema }).strict(),
   /** Buzz the player to act (after NUDGE_AFTER_MS on their turn, once per NUDGE_COOLDOWN_MS). */
   'game:nudge': empty,
+  /** "Your turn" notifications for this game on this device. */
+  'push:subscribe': z.object({ subscription: PushSubscriptionSchema }).strict(),
+  'push:unsubscribe': z.object({ endpoint: z.string().max(2000) }).strict(),
   /** After the game ended: create the rematch (first tap) or join it (everyone else). */
   'game:rematch': empty,
 } as const;

@@ -2,6 +2,7 @@ import { MIN_PLAYERS } from '@tpc/shared';
 import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PushPrompt } from '../components/PushPrompt';
 import { HostSheet } from '../components/sheets/HostSheet';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
@@ -131,6 +132,8 @@ export default function LobbyRoom({ m }: { m: TableModel }) {
               </li>
             ))}
           </ul>
+
+          <PushPrompt />
 
           <div className="rounded-2xl bg-panel p-3">
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-ink-300">

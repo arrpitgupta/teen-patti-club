@@ -324,6 +324,19 @@ export const en = {
     awayHint: 'No boot is charged and your balance is kept. Turn it off to play again.',
   },
 
+  push: {
+    title: 'Get a buzz on your turn',
+    body: 'We’ll notify this phone only when it’s your turn, someone asks you for a side show, or someone nudges you — and only while the app isn’t open. Nothing else.',
+    enable: 'Turn on',
+    notNow: 'Not now',
+    on: 'Your-turn notifications are on for this phone.',
+    blocked: 'Notifications are blocked for this site. Allow them in your browser settings.',
+    iphone:
+      'On iPhone, notifications work once the app is added to your Home Screen (coming soon).',
+    menu: 'Your-turn notifications',
+    menuHint: 'Only when it’s your turn and the app isn’t open.',
+  },
+
   nudge: {
     button: (name: string) => `Nudge ${name}`,
     /** What the nudged player sees (with a buzz). */

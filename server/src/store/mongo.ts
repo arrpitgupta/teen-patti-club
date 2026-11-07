@@ -15,6 +15,7 @@ const PlayerSchema = new Schema(
     totalBuyIn: Number,
     joinedAt: Date,
     leftAt: { type: Date, default: null },
+    push: { type: Schema.Types.Mixed, default: [] },
   },
   { _id: false },
 );

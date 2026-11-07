@@ -47,6 +47,13 @@ export function createRoutes(store: GameStore, manager: GameManager): Router {
     }),
   );
 
+  // Public VAPID key for "your turn" notifications (404 when push is off).
+  router.get('/api/push/key', (_req, res) => {
+    const key = manager.opts.push?.publicKey;
+    if (key) res.json({ publicKey: key });
+    else res.status(404).json({ error: 'Notifications are not set up on this server.' });
+  });
+
   router.get(
     '/api/games/:code/rounds',
     wrap(async (req, res) => {

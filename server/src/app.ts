@@ -7,6 +7,7 @@ import type { Config } from './config';
 import { DEV_CONSOLE_HTML } from './devConsole';
 import { GameManager, type ManagerOptions } from './game/manager';
 import { originChecker } from './origin';
+import { createPushSender } from './push';
 import { createRoutes } from './routes';
 import { registerSockets, type SocketOptions } from './sockets';
 import type { GameStore } from './store/types';
@@ -42,7 +43,7 @@ export function createServer({
   app.use(cors({ origin }));
   app.use(express.json({ limit: '32kb' }));
 
-  const manager = new GameManager(store, managerOptions);
+  const manager = new GameManager(store, { push: createPushSender(config), ...managerOptions });
   app.use(createRoutes(store, manager));
   if (config.NODE_ENV !== 'production') {
     // Dev-only console for manual testing before the real client exists.

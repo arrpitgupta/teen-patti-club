@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { t } from '../i18n';
 import { buildModel } from '../lib/model';
+import { autoSubscribe } from '../lib/push';
 import { getSocket, reconnect } from '../lib/socket';
 import { forgetSeat, getSeat } from '../lib/storage';
 import { useGame } from '../store/game';
@@ -32,6 +33,12 @@ export default function GamePage() {
       });
     }
   }, [code, seat?.playerToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once this phone is seated in the game: resubscribe to "your turn" pushes if allowed.
+  const joined = pub?.code === code && pub.status !== 'ended';
+  useEffect(() => {
+    if (joined) void autoSubscribe();
+  }, [joined, code]);
 
   const model = useMemo(
     () => (pub && seat && pub.code === code ? buildModel(pub, priv, seat.playerId) : null),

@@ -25,6 +25,7 @@ import {
   type Settings,
   type TableAction,
 } from '@tpc/shared';
+import type { PushSender } from '../push';
 import type { GameSnapshot, GameStore } from '../store/types';
 import {
   hashToken,
@@ -56,6 +57,8 @@ export interface ManagerOptions {
   endedGameTtlMs: number;
   nudgeAfterMs: number;
   nudgeCooldownMs: number;
+  /** Web push sender; null = notifications off. */
+  push: PushSender | null;
   randomInt: (maxExclusive: number) => number;
   now: () => number;
 }
@@ -68,6 +71,7 @@ export const DEFAULT_MANAGER_OPTIONS: ManagerOptions = {
   endedGameTtlMs: 30 * 60_000,
   nudgeAfterMs: NUDGE_AFTER_MS,
   nudgeCooldownMs: NUDGE_COOLDOWN_MS,
+  push: null,
   randomInt: secureRandomInt,
   now: Date.now,
 };
@@ -153,7 +157,7 @@ export class GameManager {
     for (const s of snapshots) {
       const game = this.hydrate(s);
       this.games.set(game.code, game);
-      this.refreshTurn(game);
+      this.refreshTurn(game, false);
       this.refreshTimer(game);
       this.refreshHostAway(game);
     }
@@ -355,6 +359,7 @@ export class GameManager {
       isOffline,
       joinedAt: this.now(),
       leftAt: null,
+      push: [],
       connected: false,
       connectedSince: null,
       disconnectedAt: null,
@@ -575,6 +580,22 @@ export class GameManager {
         if (game.status !== 'active') return fail('GAME_NOT_STARTED', "The game hasn't started.");
         return this.nudge(game, me);
 
+      case 'push:subscribe': {
+        const { subscription } = payload as ClientEventPayload<'push:subscribe'>;
+        if (me.isOffline) return fail('FORBIDDEN', 'Offline seats have no phone.');
+        const sub = { endpoint: subscription.endpoint, keys: { ...subscription.keys } };
+        // One entry per device; a player keeps at most 3 devices.
+        me.push = [sub, ...me.push.filter((s) => s.endpoint !== sub.endpoint)].slice(0, 3);
+        this.schedulePersist(game);
+        return ok({ enabled: this.opts.push !== null });
+      }
+      case 'push:unsubscribe': {
+        const { endpoint } = payload as ClientEventPayload<'push:unsubscribe'>;
+        me.push = me.push.filter((s) => s.endpoint !== endpoint);
+        this.schedulePersist(game);
+        return ok(null);
+      }
+
       case 'chat:send': {
         const { text, quick } = payload as ClientEventPayload<'chat:send'>;
         if (quick && text.length > QUICK_MAX_CHARS) {
@@ -791,7 +812,7 @@ export class GameManager {
   // ---------- Turn timer & disconnect grace ----------
 
   /** Remember when the current turn started (a new turn, phase or round restarts it). */
-  private refreshTurn(game: ServerGame): void {
+  private refreshTurn(game: ServerGame, notify = true): void {
     const actor = this.currentActor(game);
     if (!actor) {
       game.turn = null;
@@ -800,7 +821,39 @@ export class GameManager {
     const r = game.table.round!;
     // Same key as the turn timer: someone else looking at their cards doesn't restart it.
     const key = `${r.roundNumber}:${r.phase}:${actor}`;
-    if (game.turn?.key !== key) game.turn = { key, playerId: actor, since: this.now() };
+    if (game.turn?.key === key) return;
+    game.turn = { key, playerId: actor, since: this.now() };
+    if (!notify) return;
+    const side = r.phase === 'AWAITING_SIDESHOW_RESPONSE' ? r.pendingSideShow : null;
+    const nameOf = (id: string) => game.players.find((p) => p.id === id)?.name ?? 'Someone';
+    this.notify(
+      game,
+      actor,
+      side
+        ? {
+            title: 'Side show request',
+            body: `${nameOf(side.requesterId)} asks you for a side show (game ${game.code}).`,
+          }
+        : { title: 'Your turn', body: `Game ${game.code}: pot ${r.pot}, stake ${r.stake}.` },
+    );
+  }
+
+  /**
+   * "Your turn" web push to every device the player subscribed. The service worker only shows
+   * it when the app isn't on screen. Never includes cards.
+   */
+  private notify(game: ServerGame, playerId: string, msg: { title: string; body: string }): void {
+    const sender = this.opts.push;
+    const p = game.players.find((x) => x.id === playerId);
+    if (!sender || !p || p.isOffline || p.leftAt !== null || p.push.length === 0) return;
+    const message = { ...msg, tag: `tpc-${game.code}`, url: `/g/${game.code}` };
+    for (const sub of [...p.push]) {
+      void sender.send(sub, message).then(({ gone }) => {
+        if (!gone) return;
+        p.push = p.push.filter((s) => s.endpoint !== sub.endpoint);
+        this.schedulePersist(game);
+      });
+    }
   }
 
   private nudge(game: ServerGame, me: ServerPlayer): Result<unknown> {
@@ -820,6 +873,10 @@ export class GameManager {
     }
     game.lastNudgeAt = now;
     this.commit(game, [{ type: 'NUDGED', playerId: turn.playerId, by: me.id }], 'none');
+    this.notify(game, turn.playerId, {
+      title: 'Jaldi chal!',
+      body: `${me.name} is waiting for you (game ${game.code}).`,
+    });
     return ok(null);
   }
 
@@ -1017,6 +1074,7 @@ export class GameManager {
           totalBuyIn: tp?.totalBuyIn ?? 0,
           joinedAt: p.joinedAt,
           leftAt: p.leftAt,
+          push: p.push,
         };
       }),
       currentRoundState: game.table,
@@ -1054,6 +1112,7 @@ export class GameManager {
         isOffline: p.isOffline,
         joinedAt: p.joinedAt,
         leftAt: p.leftAt,
+        push: Array.isArray(p.push) ? p.push : [],
         // Everyone starts disconnected after a restart; clients reconnect with their token.
         connected: false,
         connectedSince: null,

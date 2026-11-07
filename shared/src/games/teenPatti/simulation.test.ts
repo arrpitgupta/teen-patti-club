@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDeck, shuffle } from '../../cards/cards';
+import { createDeck, shuffle, type Card } from '../../cards/cards';
 import { computeNets, settle } from '../../settlement/settlement';
 import { legalActions } from './legal';
 import { replayRound } from './round';
@@ -82,7 +82,91 @@ function randomSettings(rng: () => number): Partial<Settings> {
   };
 }
 
+/** Physical mode: comparisons are decided by the players (any legal answer). */
+function randomPhysicalMove(
+  t: TableState,
+  rng: () => number,
+  dealt: Record<string, Card[]>,
+): TableAction {
+  const r = t.round!;
+  if (r.phase === 'DEALING') return { type: 'CARDS_DEALT' };
+  const c = r.comparison;
+  if (r.phase === 'AWAITING_RESULT' && c) {
+    const id = pick(rng, c.playerIds);
+    const legal = legalActions(t, id).result!;
+    if (legal.canEnterCards) {
+      const todo = c.playerIds.filter((p) => !c.enteredCards[p]);
+      const who = pick(rng, todo);
+      return { type: 'RESULT_ENTER_CARDS', playerId: who, cards: dealt[who]! };
+    }
+    if (legal.canPickWinner) {
+      return { type: 'RESULT_TAP_WINNER', playerId: id, winnerIds: [pick(rng, c.playerIds)] };
+    }
+    const waiting = c.playerIds.filter((p) => !c.proposal?.confirmedBy.includes(p));
+    const who = pick(rng, waiting);
+    return rng() < 0.85
+      ? { type: 'RESULT_CONFIRM', playerId: who }
+      : { type: 'RESULT_DISPUTE', playerId: who };
+  }
+  // Players sometimes enter their (real) hand; now and then with a typo that clashes.
+  const canEnter = r.players.filter((p) => legalActions(t, p.id).canEnterHand);
+  if (canEnter.length > 0 && rng() < 0.12) {
+    const p = pick(rng, canEnter);
+    const other = pick(rng, Object.values(dealt));
+    const cards: Card[] = rng() < 0.1 ? [other[0]!, ...dealt[p.id]!.slice(1)] : dealt[p.id]!;
+    return new Set(cards).size === 3
+      ? { type: 'ENTER_HAND', playerId: p.id, cards }
+      : { type: 'ENTER_HAND', playerId: p.id, cards: dealt[p.id]! };
+  }
+  return randomMove(t, rng);
+}
+
 describe('random games (simulation)', () => {
+  it('150 random physical games with entered hands: no card is public before the round ends', () => {
+    for (let seed = 1; seed <= 150; seed++) {
+      const rng = mulberry32(seed * 7919);
+      const random = (n: number) => Math.floor(rng() * n);
+      const ids = Array.from({ length: 2 + random(5) }, (_, i) => `p${i}`);
+      let t = makeTable(ids, {
+        ...randomSettings(rng),
+        mode: 'physical',
+        physicalResolution: pick(rng, ['hybrid', 'tapWinner', 'enterCards'] as const),
+      });
+      for (let roundNo = 0; roundNo < 5; roundNo++) {
+        if (!planNextRound(t)) {
+          for (const p of t.players) {
+            if (p.balance < t.settings.boot)
+              t = ok(applyAction(t, { type: 'REBUY', playerId: p.id })).state;
+          }
+        }
+        t = ok(applyAction(t, { type: 'START_ROUND' })).state;
+        // The "real" cards on the table.
+        const deck = shuffle(createDeck(), random);
+        const dealt = Object.fromEntries(ids.map((id, i) => [id, deck.slice(i * 3, i * 3 + 3)]));
+        let steps = 0;
+        while (isRoundInProgress(t)) {
+          if (++steps > 3000) throw new Error(`seed ${seed}: physical round did not finish`);
+          const move = randomPhysicalMove(t, rng, dealt);
+          const res = applyAction(t, move);
+          if (!res.ok) {
+            if (move.type !== 'UNDO' && move.type !== 'RESULT_ENTER_CARDS')
+              throw new Error(`seed ${seed}: ${move.type} rejected: ${res.error.message}`);
+            continue;
+          }
+          t = res.state;
+          checkInvariants(t);
+          if (isRoundInProgress(t)) {
+            const pub = JSON.stringify(publicView(t));
+            for (const card of deck.slice(0, ids.length * 3))
+              expect(pub).not.toContain(`"${card}"`);
+          }
+        }
+        expect(replayRound(t.roundInitial!, t.round!.actions)).toEqual(t.round);
+      }
+      expect(computeNets(t.players).reduce((s, n) => s + n.net, 0)).toBe(0);
+    }
+  });
+
   it('300 random games: chips are conserved, rounds always end, replay matches, nets settle to zero', () => {
     for (let seed = 1; seed <= 300; seed++) {
       const rng = mulberry32(seed);

@@ -13,17 +13,26 @@ const SUITS = [
 
 const label = (r: string) => (r === 'T' ? '10' : r);
 
-/** 13 ranks × 4 suits. Cards other players already picked are struck through. */
+/**
+ * 13 ranks × 4 suits. In a card-picker show, cards other players already picked are struck
+ * through. For "Enter my hand" `taken` is empty: all 52 stay selectable so nothing leaks.
+ */
 export function CardPicker({
   taken,
   a23Rank,
   onSubmit,
+  initial = [],
+  intro = t.physical.pickCardsBody,
+  submitLabel = t.physical.submitCards,
 }: {
   taken: readonly Card[];
   a23Rank: A23Rank;
   onSubmit: (cards: Card[]) => void;
+  initial?: readonly Card[];
+  intro?: string;
+  submitLabel?: string;
 }) {
-  const [picked, setPicked] = useState<Card[]>([]);
+  const [picked, setPicked] = useState<Card[]>(() => [...initial]);
   const takenSet = new Set(taken);
   const toggle = (c: Card) =>
     setPicked((p) => (p.includes(c) ? p.filter((x) => x !== c) : p.length < 3 ? [...p, c] : p));
@@ -31,7 +40,7 @@ export function CardPicker({
 
   return (
     <div className="flex min-h-0 flex-col gap-3">
-      <p className="text-[14px] leading-snug text-ink-300">{t.physical.pickCardsBody}</p>
+      <p className="text-[14px] leading-snug text-ink-300">{intro}</p>
 
       <div className="flex items-center gap-2.5">
         {[0, 1, 2].map((i) => {
@@ -71,10 +80,12 @@ export function CardPicker({
         ))}
       </div>
 
-      <p className="flex items-center gap-2 text-xs text-ink-500">
-        <span className="font-display text-[13px] font-semibold line-through">Q♦&#xFE0E;</span>
-        {t.physical.takenHint}
-      </p>
+      {taken.length > 0 && (
+        <p className="flex items-center gap-2 text-xs text-ink-500">
+          <span className="font-display text-[13px] font-semibold line-through">Q♦&#xFE0E;</span>
+          {t.physical.takenHint}
+        </p>
+      )}
 
       <button
         type="button"
@@ -82,7 +93,7 @@ export function CardPicker({
         onClick={() => onSubmit(picked)}
         className="min-h-[58px] rounded-2xl bg-gold-500 font-display text-base font-bold text-gold-ink disabled:bg-panel-sunk disabled:text-ink-500"
       >
-        {picked.length === 3 ? t.physical.submitCards : t.physical.pickMore(3 - picked.length)}
+        {picked.length === 3 ? submitLabel : t.physical.pickMore(3 - picked.length)}
       </button>
     </div>
   );

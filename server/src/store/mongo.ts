@@ -66,7 +66,7 @@ const RoundSchema = new Schema(
     winningHand: { type: String, default: null },
     revealedHands: Schema.Types.Mixed,
     actions: Schema.Types.Mixed,
-    resolution: { type: String, enum: ['auto', 'tapWinner', 'enterCards'] },
+    resolution: { type: String, enum: ['auto', 'tapWinner', 'enterCards', 'entered'] },
     startedAt: Date,
     endedAt: Date,
   },

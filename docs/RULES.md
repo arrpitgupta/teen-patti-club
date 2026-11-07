@@ -67,6 +67,10 @@ SPEC.md §4 defines the core rules. This file records how ambiguous points were 
 - No cards are stored. Betting starts when the host taps **Cards dealt**.
 - **Tap winner / Hybrid:** one involved player picks the winner(s); **every other involved player must confirm**. Any dispute switches to **Enter cards**. Picking several players means a tie (the normal tie rule applies).
 - **Enter cards:** each involved player picks 3 cards; cards picked by others are greyed out; the evaluator decides and explains.
+- **Enter my hand (optional):** after looking at their real cards, a player may enter them at any time while betting is open. It marks them seen. The cards are private (stored like digital hands) and are only revealed by a show, pot-limit show or side show (to the two side-show players). While entering, all 52 cards stay selectable; the server never checks them against other players' entries, because any answer would leak cards.
+  - The entered hand can be edited until that player's next bet (chaal, side show or show) after entering; then it is fixed. Bets made before entering don't lock it.
+  - At a side show / show / pot-limit show where **every** involved player entered: if two entered hands share a card, everyone involved re-enters with the card picker (nothing was shown before). Otherwise the evaluator proposes the result with its reason; the involved players see each other's entered cards and **all must confirm** they match the table. Any dispute falls back to the normal flow (tap winner for Tap winner / Hybrid, card picker for Enter cards).
+  - If not every involved player entered, the normal flow runs and no entered hand is revealed.
 
 ## Hand rankings
 

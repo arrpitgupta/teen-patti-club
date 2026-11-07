@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '../../i18n';
 import type { TableModel } from '../../lib/model';
-import { act } from '../../lib/socket';
+import { act, actOk } from '../../lib/socket';
 import { getPrefs, savePrefs } from '../../lib/storage';
 import { useChat } from '../../store/chat';
 import { Button } from '../ui/Button';
@@ -86,8 +86,8 @@ export function MenuSheet({
             block
             onClick={() => {
               if (!window.confirm(t.menu.leaveConfirm)) return;
-              void act('game:leave', {}).then((ok) => {
-                if (ok !== null) navigate('/');
+              void actOk('game:leave', {}).then((ok) => {
+                if (ok) navigate('/');
               });
             }}
           >

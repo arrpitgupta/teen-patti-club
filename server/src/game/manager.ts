@@ -86,6 +86,7 @@ const ROUND_LOGGED: ReadonlySet<string> = new Set([
   'RESULT_CONFIRM',
   'RESULT_DISPUTE',
   'RESULT_ENTER_CARDS',
+  'ENTER_HAND',
   'ADJUST',
   'UNDO',
   'CANCEL_ROUND',
@@ -452,6 +453,10 @@ export class GameManager {
           playerId: id,
           winnerIds: p.winnerIds as string[],
         }));
+      case 'action:enterHand': {
+        const { cards } = payload as ClientEventPayload<'action:enterHand'>;
+        return seat((id) => ({ type: 'ENTER_HAND', playerId: id, cards: [...cards] }));
+      }
       case 'result:confirm':
         return seat((id) => ({ type: 'RESULT_CONFIRM', playerId: id }));
       case 'result:dispute':

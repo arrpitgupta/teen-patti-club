@@ -1,16 +1,25 @@
-import type { PublicComparison } from '@tpc/shared';
+import {
+  describeHandValue,
+  evaluateHand,
+  explainComparison,
+  type Card,
+  type PublicComparison,
+} from '@tpc/shared';
 import { useEffect, useState } from 'react';
-import { t } from '../../i18n';
+import { possessive, t } from '../../i18n';
 import { chips } from '../../lib/format';
 import { canHostActFor, joinNames, type TableModel } from '../../lib/model';
 import { act } from '../../lib/socket';
 import { Avatar } from '../ui/Avatar';
 import { Icon } from '../ui/Icon';
+import { CardFace, CardSlot } from '../ui/PlayingCard';
 import { Sheet } from '../ui/Sheet';
 import { CardPicker } from './CardPicker';
 
 function needsInput(c: PublicComparison, id: string): boolean {
-  if (c.method === 'tapWinner') return !c.proposal || !c.proposal.confirmedBy.includes(id);
+  if (c.method === 'tapWinner' || c.method === 'entered') {
+    return !c.proposal || !c.proposal.confirmedBy.includes(id);
+  }
   if (c.method === 'enterCards') return !c.enteredBy.includes(id);
   return false;
 }
@@ -43,7 +52,13 @@ export function ComparisonSheet({ m }: { m: TableModel }) {
   );
 
   let body;
-  if (c.method === 'tapWinner') {
+  if (c.method === 'entered') {
+    body = c.proposal?.confirmedBy.includes(actor) ? (
+      <ConfirmStatus m={m} c={c} actor={actor} />
+    ) : (
+      <EnteredResult m={m} c={c} actAs={actAs} />
+    );
+  } else if (c.method === 'tapWinner') {
     if (!c.proposal) body = <PickWinners m={m} c={c} actor={actor} actAs={actAs} />;
     else if (c.proposal.confirmedBy.includes(actor))
       body = <ConfirmStatus m={m} c={c} actor={actor} />;
@@ -61,6 +76,7 @@ export function ComparisonSheet({ m }: { m: TableModel }) {
       <CardPicker
         taken={actor === m.meId ? (m.priv?.takenCards ?? []) : []}
         a23Rank={r.rules.a23Rank}
+        intro={c.clash ? t.physical.clashBody : t.physical.pickCardsBody}
         onSubmit={(cards) => void act('result:enterCards', { cards, ...actAs } as never)}
       />
     );
@@ -74,7 +90,8 @@ export function ComparisonSheet({ m }: { m: TableModel }) {
 }
 
 function titleFor(m: TableModel, c: PublicComparison, actor: string): string {
-  if (c.method === 'enterCards') return t.physical.pickCards;
+  if (c.method === 'entered') return t.physical.enteredTitle;
+  if (c.method === 'enterCards') return c.clash ? t.physical.clashTitle : t.physical.pickCards;
   if (!c.proposal) return c.reason === 'potLimit' ? t.physical.potLimitTitle : t.physical.whoWon;
   const picker = m.nameOf(c.proposal.by);
   const tie = c.proposal.winnerIds.length === c.playerIds.length && c.playerIds.length === 2;
@@ -258,6 +275,99 @@ function ConfirmResult({
   );
 }
 
+/** Every involved player entered their hand: the evaluator's answer, to confirm or dispute. */
+function EnteredResult({
+  m,
+  c,
+  actAs,
+}: {
+  m: TableModel;
+  c: PublicComparison;
+  actAs: Record<string, string>;
+}) {
+  const a23Rank = m.round!.rules.a23Rank;
+  const proposal = c.proposal!;
+  const handOf = (id: string): Card[] | null =>
+    id === m.meId ? (m.priv?.hand ?? null) : (m.priv?.visibleHands[id] ?? null);
+  const values = new Map(
+    c.playerIds.flatMap((id) => {
+      const h = handOf(id);
+      return h ? [[id, evaluateHand(h, { a23Rank })] as const] : [];
+    }),
+  );
+  const winners = proposal.winnerIds;
+  const best = values.get(winners[0]!);
+  const runnerUp = [...values.entries()]
+    .filter(([id]) => !winners.includes(id))
+    .sort((x, y) => y[1].score - x[1].score)[0];
+  const why =
+    winners.length > 1
+      ? t.physical.enteredTie
+      : best && runnerUp
+        ? t.recap.because(
+            possessive(m.nameOf(winners[0]!)),
+            describeHandValue(best),
+            possessive(m.nameOf(runnerUp[0])),
+            describeHandValue(runnerUp[1]),
+            explainComparison(best, runnerUp[1]),
+          )
+        : null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-[15px] leading-relaxed text-ink-300">{t.physical.enteredBody}</p>
+      <ul className="flex flex-col overflow-hidden rounded-[18px] bg-panel">
+        {c.playerIds.map((id, i) => {
+          const p = m.playerOf(id)!;
+          const hand = handOf(id);
+          const v = values.get(id);
+          return (
+            <li
+              key={id}
+              className={`flex min-h-[72px] items-center gap-3 px-3.5 py-2 ${i > 0 ? 'border-t border-ink-100/[0.08]' : ''}`}
+            >
+              <Avatar id={p.id} name={p.name} avatar={p.avatar} size={36} />
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="truncate text-[15px] font-semibold">{m.nameOf(id)}</span>
+                {v && <span className="text-xs text-ink-300">{describeHandValue(v)}</span>}
+              </div>
+              <span className="flex gap-0.5">
+                {hand
+                  ? hand.map((card) => <CardFace key={card} card={card} size="xs" />)
+                  : [0, 1, 2].map((k) => <CardSlot key={k} size="xs" />)}
+              </span>
+              {winners.includes(id) && (
+                <span className="rounded-full bg-ink-100 px-2.5 py-0.5 text-xs font-bold text-felt-950">
+                  {t.physical.winner}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {why && <p className="text-[15px] font-semibold leading-snug">{why}</p>}
+      <div className="flex items-start gap-2.5 rounded-2xl bg-ink-100/[0.06] p-3">
+        <Icon name="info" size={18} className="mt-px shrink-0 text-ink-300" />
+        <p className="text-[13px] leading-snug text-ink-300">{t.physical.matchHint}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => void act('result:confirm', { ...actAs } as never)}
+        className="min-h-[60px] rounded-2xl bg-gold-500 font-display text-[17px] font-bold text-gold-ink"
+      >
+        {t.physical.matchConfirm}
+      </button>
+      <button
+        type="button"
+        onClick={() => void act('result:dispute', { ...actAs } as never)}
+        className="min-h-[52px] rounded-2xl bg-panel text-base font-semibold"
+      >
+        {t.physical.noMatch}
+      </button>
+    </div>
+  );
+}
+
 function ConfirmStatus({ m, c, actor }: { m: TableModel; c: PublicComparison; actor: string }) {
   const waiting = c.playerIds.filter((id) => !c.proposal?.confirmedBy.includes(id)).map(m.nameOf);
   return (
@@ -281,7 +391,7 @@ function StatusList({ m, c, actor }: { m: TableModel; c: PublicComparison; actor
           const p = m.playerOf(id)!;
           const winner = proposal.winnerIds.includes(id);
           const status =
-            id === proposal.by
+            id === proposal.by && c.method !== 'entered'
               ? t.physical.pickedWinner
               : proposal.confirmedBy.includes(id)
                 ? t.physical.confirmed

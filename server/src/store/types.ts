@@ -4,6 +4,7 @@ import type {
   GameStatus,
   LogEntry,
   PlayerStats,
+  ResolutionMethod,
   Settings,
   TableState,
 } from '@tpc/shared';
@@ -68,7 +69,7 @@ export interface RoundRecord {
   winningHand: string | null;
   revealedHands: Record<string, string[]>;
   actions: RoundActionRecord[];
-  resolution: 'auto' | 'tapWinner' | 'enterCards';
+  resolution: ResolutionMethod;
   startedAt: number;
   endedAt: number;
 }

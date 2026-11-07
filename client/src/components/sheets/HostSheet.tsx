@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { t } from '../../i18n';
 import { chips, net } from '../../lib/format';
 import type { TableModel } from '../../lib/model';
-import { act } from '../../lib/socket';
+import { act, actOk } from '../../lib/socket';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { Sheet } from '../ui/Sheet';
@@ -234,8 +234,8 @@ function AdjustSheet({ open, onClose, m }: { open: boolean; onClose: () => void;
         size="lg"
         disabled={!valid}
         onClick={async () => {
-          const ok = await act('host:adjustChips', { from, to, amount, reason: reason.trim() });
-          if (ok !== null) onClose();
+          const ok = await actOk('host:adjustChips', { from, to, amount, reason: reason.trim() });
+          if (ok) onClose();
         }}
       >
         {t.host.adjust}
@@ -256,8 +256,8 @@ function RulesSheet({ open, onClose, m }: { open: boolean; onClose: () => void; 
         size="lg"
         disabled={!draft.valid}
         onClick={async () => {
-          const ok = await act('game:updateSettings', { settings: draft.s as Settings });
-          if (ok !== null) onClose();
+          const ok = await actOk('game:updateSettings', { settings: draft.s as Settings });
+          if (ok) onClose();
         }}
       >
         {t.common.save}
@@ -282,8 +282,8 @@ function OfflineSeatSheet({ open, onClose }: { open: boolean; onClose: () => voi
         size="lg"
         disabled={name.trim().length === 0}
         onClick={async () => {
-          const ok = await act('host:addOfflineSeat', { name: name.trim(), avatar: 'initials' });
-          if (ok !== null) {
+          const ok = await actOk('host:addOfflineSeat', { name: name.trim(), avatar: 'initials' });
+          if (ok) {
             setName('');
             onClose();
           }

@@ -182,6 +182,10 @@ export interface LegalActions {
   show: { cost: number; opponentId: PlayerId } | null;
   canRespondSideShow: boolean;
   mustSee: boolean;
+  /** Physical: "Enter my hand" (or change it, until the first bet after entering). */
+  canEnterHand: boolean;
+  /** Physical: the player entered a hand and has bet since, so it is fixed. */
+  handLocked: boolean;
   /** Physical-mode result entry, when this player is part of a comparison. */
   result: {
     canPickWinner: boolean;
@@ -204,6 +208,8 @@ export function legalActions(t: TableState, playerId: PlayerId): LegalActions {
     show: null,
     canRespondSideShow: false,
     mustSee: false,
+    canEnterHand: false,
+    handLocked: false,
     result: null,
   };
   const r = t.round;
@@ -231,13 +237,20 @@ export function legalActions(t: TableState, playerId: PlayerId): LegalActions {
   legal.canRespondSideShow =
     r.phase === 'AWAITING_SIDESHOW_RESPONSE' && r.pendingSideShow?.targetId === p.id;
 
+  legal.handLocked = !!p.handLocked;
+  legal.canEnterHand =
+    r.rules.mode === 'physical' &&
+    (r.phase === 'BETTING' || r.phase === 'AWAITING_SIDESHOW_RESPONSE') &&
+    !p.handLocked;
+
   const c = r.comparison;
   if (r.phase === 'AWAITING_RESULT' && c && c.playerIds.includes(p.id) && c.method !== 'auto') {
     const tap = c.method === 'tapWinner';
+    const confirmable = tap || c.method === 'entered';
     legal.result = {
       canPickWinner: tap && c.proposal === null,
-      canConfirm: tap && c.proposal !== null && !c.proposal.confirmedBy.includes(p.id),
-      canDispute: tap,
+      canConfirm: confirmable && c.proposal !== null && !c.proposal.confirmedBy.includes(p.id),
+      canDispute: confirmable,
       canEnterCards: c.method === 'enterCards',
     };
   }

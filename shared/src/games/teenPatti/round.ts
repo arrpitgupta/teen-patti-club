@@ -101,6 +101,7 @@ function reduce(r: RoundState, a: RoundAction, ev: Events): EngineError | null {
       if (!isValidBet(range.value, a.amount)) return err('INVALID_AMOUNT', betHint(range.value));
       const blind = !p.seen;
       pay(r, p, a.amount);
+      lockEnteredHand(p);
       if (blind) {
         r.stake = a.amount;
         p.blindBets += 1;
@@ -142,6 +143,7 @@ function reduce(r: RoundState, a: RoundAction, ev: Events): EngineError | null {
       if (!check.ok) return check.error;
       const { cost, targetId } = check.value;
       pay(r, p, cost); // a normal seen bet; stake stays the same (cost / 2 = stake)
+      lockEnteredHand(p);
       ev.push({ type: 'SIDESHOW_REQUESTED', playerId: p.id, targetId, amount: cost, pot: r.pot });
       if (triggerPotLimit(r, ev)) return null;
       r.phase = 'AWAITING_SIDESHOW_RESPONSE';
@@ -184,13 +186,14 @@ function reduce(r: RoundState, a: RoundAction, ev: Events): EngineError | null {
       if (!check.ok) return check.error;
       const { cost, opponentId } = check.value;
       pay(r, p, cost);
+      lockEnteredHand(p);
       ev.push({ type: 'SHOW_REQUESTED', playerId: p.id, opponentId, amount: cost, pot: r.pot });
       beginComparison(r, 'show', p.id, [p.id, opponentId], ev);
       return null;
     }
 
     case 'RESULT_TAP_WINNER': {
-      const c = requireComparison(r, a.playerId, 'tapWinner');
+      const c = requireComparison(r, a.playerId, ['tapWinner']);
       if ('code' in c) return c;
       if (c.proposal) return err('ILLEGAL_ACTION', 'A result is already waiting for confirmation.');
       const ids = [...new Set(a.winnerIds)];
@@ -207,7 +210,7 @@ function reduce(r: RoundState, a: RoundAction, ev: Events): EngineError | null {
     }
 
     case 'RESULT_CONFIRM': {
-      const c = requireComparison(r, a.playerId, 'tapWinner');
+      const c = requireComparison(r, a.playerId, ['tapWinner', 'entered']);
       if ('code' in c) return c;
       if (!c.proposal) return err('ILLEGAL_ACTION', 'Nobody has picked a winner yet.');
       if (c.proposal.confirmedBy.includes(a.playerId)) {
@@ -217,9 +220,14 @@ function reduce(r: RoundState, a: RoundAction, ev: Events): EngineError | null {
       ev.push({ type: 'RESULT_CONFIRMED', playerId: a.playerId });
       const proposal = c.proposal;
       if (c.playerIds.every((id) => proposal.confirmedBy.includes(id))) {
+        const entered = c.method === 'entered';
         completeComparison(
           r,
-          { winnerIds: proposal.winnerIds, hands: null, resolution: 'tapWinner' },
+          {
+            winnerIds: proposal.winnerIds,
+            hands: entered ? deepClone(c.enteredCards) : null,
+            resolution: entered ? 'entered' : 'tapWinner',
+          },
           ev,
         );
       }
@@ -227,16 +235,19 @@ function reduce(r: RoundState, a: RoundAction, ev: Events): EngineError | null {
     }
 
     case 'RESULT_DISPUTE': {
-      const c = requireComparison(r, a.playerId, 'tapWinner');
+      const c = requireComparison(r, a.playerId, ['tapWinner', 'entered']);
       if ('code' in c) return c;
-      c.method = 'enterCards';
+      // Entered hands disputed: fall back to the normal flow. Tap-winner disputed: card picker.
+      c.method = c.method === 'entered' ? physicalFallback(r) : 'enterCards';
       c.proposal = null;
+      c.enteredCards = {};
+      c.clash = false;
       ev.push({ type: 'RESULT_DISPUTED', playerId: a.playerId });
       return null;
     }
 
     case 'RESULT_ENTER_CARDS': {
-      const c = requireComparison(r, a.playerId, 'enterCards');
+      const c = requireComparison(r, a.playerId, ['enterCards']);
       if ('code' in c) return c;
       const cards = a.cards;
       if (cards.length !== 3 || !cards.every(isCard) || new Set(cards).size !== 3) {
@@ -264,9 +275,49 @@ function reduce(r: RoundState, a: RoundAction, ev: Events): EngineError | null {
       return null;
     }
 
+    case 'ENTER_HAND': {
+      const p = findPlayer(r, a.playerId);
+      if (!p) return unknownPlayer();
+      if (r.rules.mode !== 'physical') {
+        return err('ILLEGAL_ACTION', 'Entering your hand is only for games with real cards.');
+      }
+      if (r.phase === 'DEALING') return err('NOT_DEALT', 'Wait until the cards are dealt.');
+      if (r.phase === 'AWAITING_RESULT') {
+        return err('ILLEGAL_ACTION', 'Wait until the cards being compared are settled.');
+      }
+      if (p.packed) return err('ILLEGAL_ACTION', "You've packed this round.");
+      if (p.handLocked) {
+        return err('ILLEGAL_ACTION', "You've bet since entering your hand, so it can't change.");
+      }
+      const picked = a.cards;
+      if (picked.length !== 3 || !picked.every(isCard) || new Set(picked).size !== 3) {
+        return err('INVALID_CARDS', 'Pick 3 different cards.');
+      }
+      // Deliberately no check against other players' entered cards: any answer would leak them.
+      p.hand = [...picked];
+      p.entered = true;
+      p.handLocked = false;
+      if (!p.seen) {
+        p.seen = true;
+        ev.push({ type: 'SAW_CARDS', playerId: p.id });
+      }
+      ev.push({ type: 'HAND_ENTERED', playerId: p.id });
+      return null;
+    }
+
     case 'ADJUST':
       return adjustInRound(r, a, ev);
   }
+}
+
+/** Physical: betting with an entered hand fixes it (it could be edited until now). */
+function lockEnteredHand(p: RoundPlayer): void {
+  if (p.entered) p.handLocked = true;
+}
+
+/** The method a physical comparison uses when entered hands can't decide it. */
+function physicalFallback(r: RoundState): ResolutionMethod {
+  return r.rules.physicalResolution === 'enterCards' ? 'enterCards' : 'tapWinner';
 }
 
 // ---------- Helpers ----------
@@ -291,7 +342,7 @@ function requireTurn(r: RoundState, p: RoundPlayer | undefined): EngineError | n
 function requireComparison(
   r: RoundState,
   playerId: PlayerId,
-  method: 'tapWinner' | 'enterCards',
+  methods: ResolutionMethod[],
 ): Comparison | EngineError {
   const c = r.comparison;
   if (r.phase !== 'AWAITING_RESULT' || !c || c.method === 'auto') {
@@ -300,12 +351,14 @@ function requireComparison(
   if (!c.playerIds.includes(playerId)) {
     return err('ILLEGAL_ACTION', 'Only the players in this show can decide the result.');
   }
-  if (c.method !== method) {
+  if (!methods.includes(c.method)) {
     return err(
       'ILLEGAL_ACTION',
       c.method === 'enterCards'
         ? 'Enter your cards to settle this.'
-        : 'Pick the winner, or dispute.',
+        : c.method === 'entered'
+          ? 'Confirm the result, or dispute it.'
+          : 'Pick the winner, or dispute.',
     );
   }
   return c;
@@ -401,17 +454,39 @@ function beginComparison(
   playerIds: PlayerId[],
   ev: Events,
 ): void {
-  const method: ResolutionMethod =
-    r.rules.mode === 'digital'
-      ? 'auto'
-      : r.rules.physicalResolution === 'enterCards'
-        ? 'enterCards'
-        : 'tapWinner';
+  let method: ResolutionMethod = r.rules.mode === 'digital' ? 'auto' : physicalFallback(r);
+  let proposal: Comparison['proposal'] = null;
+  let enteredCards: Record<PlayerId, Card[]> = {};
+  let clash = false;
+
+  if (r.rules.mode === 'physical') {
+    // "Enter my hand": if everyone involved entered, the evaluator can decide.
+    const hands = playerIds.map((id) => findPlayer(r, id)!).filter((p) => p.entered && p.hand);
+    if (hands.length === playerIds.length) {
+      const all = hands.flatMap((p) => p.hand!);
+      if (new Set(all).size !== all.length) {
+        // Two players claim the same card. Ask everyone involved to re-check with the card
+        // picker; nothing entered earlier is shown.
+        method = 'enterCards';
+        clash = true;
+      } else {
+        method = 'entered';
+        enteredCards = Object.fromEntries(hands.map((p) => [p.id, [...p.hand!]]));
+        proposal = {
+          by: requesterId ?? playerIds[0]!,
+          winnerIds: topHands(r, enteredCards, playerIds),
+          confirmedBy: [],
+        };
+      }
+    }
+  }
+
   r.phase = 'AWAITING_RESULT';
   r.pendingSideShow = null;
   r.turnId = null;
-  r.comparison = { reason, requesterId, playerIds, method, proposal: null, enteredCards: {} };
+  r.comparison = { reason, requesterId, playerIds, method, proposal, enteredCards, clash };
   ev.push({ type: 'COMPARISON_STARTED', reason, playerIds: [...playerIds], method });
+  if (clash) ev.push({ type: 'HANDS_CLASH', playerIds: [...playerIds] });
   const outcome = RESOLVERS[r.rules.mode].resolve(r, r.comparison);
   if (outcome) completeComparison(r, outcome, ev);
 }

@@ -262,6 +262,26 @@ export const en = {
     reasonSideShow: 'Side show',
     reasonShow: 'Show',
     reasonPotLimit: 'Pot-limit show',
+    // "Enter my hand" (optional)
+    enterHand: 'Enter my hand',
+    enterHandTitle: 'Enter your hand',
+    enterHandBody:
+      'Optional. Pick the 3 cards you’re holding. Only you can see them. At a side show or show, if everyone involved entered, the app decides at once.',
+    saveHand: 'Save my hand',
+    editHand: 'Edit',
+    yourEnteredHand: 'Your entered hand',
+    lockedNote: 'Fixed: you bet after entering it.',
+    editableNote: 'You can fix typos until your next bet.',
+    enteredTitle: 'The app compared the entered hands',
+    enteredBody: 'Check these match the cards on the table, then confirm.',
+    enteredWinner: (name: string) => `${name} wins`,
+    enteredTie: 'The best hands are equal.',
+    matchConfirm: 'Yes, these match',
+    noMatch: 'No, they don’t match',
+    matchHint: 'If anyone says no, you settle it the usual way (pick the winner or enter cards).',
+    clashTitle: 'Please check your cards',
+    clashBody:
+      'Two entered hands contain the same card, so one was entered wrong. Look at your cards and pick them again.',
   },
 
   recap: {
@@ -451,6 +471,8 @@ export const en = {
     cardsEntered: (name: string) => `${name} entered their cards`,
     kickedYou: 'The host removed you from this game.',
     rematch: (name: string) => `${name} started a rematch`,
+    handEntered: (name: string) => `${name} entered their hand`,
+    handsClash: 'Two entered hands share a card — re-check',
     nudged: (by: string, who: string) => `${by} nudged ${who}`,
   },
 };

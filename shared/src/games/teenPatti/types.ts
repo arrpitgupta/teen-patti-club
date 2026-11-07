@@ -31,8 +31,15 @@ export interface RoundPlayer {
   packed: boolean;
   /** Blind bets made this round (for the max-blinds rule). */
   blindBets: number;
-  /** Digital mode only. Server-side secret; never sent to other players. */
+  /**
+   * Digital: the dealt cards. Physical: the cards the player entered with "Enter my hand"
+   * (optional). Server-side secret; never sent to other players before a legal reveal.
+   */
   hand: Card[] | null;
+  /** Physical: the player entered their hand. */
+  entered?: boolean;
+  /** Physical: entered, then bet; the entered hand can no longer be changed. */
+  handLocked?: boolean;
 }
 
 export type RoundPhase =
@@ -43,7 +50,12 @@ export type RoundPhase =
   | 'ENDED';
 
 export type ComparisonReason = 'sideshow' | 'show' | 'potLimit';
-export type ResolutionMethod = 'auto' | 'tapWinner' | 'enterCards';
+/**
+ * auto: digital. tapWinner / enterCards: physical, decided by the players.
+ * entered: physical, every involved player had entered their hand; the evaluator proposed the
+ * result and the players confirm it.
+ */
+export type ResolutionMethod = 'auto' | 'tapWinner' | 'enterCards' | 'entered';
 
 export interface ResultProposal {
   by: PlayerId;
@@ -60,7 +72,10 @@ export interface Comparison {
   playerIds: PlayerId[];
   method: ResolutionMethod;
   proposal: ResultProposal | null;
+  /** enterCards: cards entered so far. entered: the involved players' entered hands. */
   enteredCards: Record<PlayerId, Card[]>;
+  /** Entered hands shared a card: the players re-check with the card picker. */
+  clash?: boolean;
 }
 
 /** Cards shown privately between two side-show players. */
@@ -120,6 +135,8 @@ export type RoundAction =
   | { type: 'RESULT_CONFIRM'; playerId: PlayerId }
   | { type: 'RESULT_DISPUTE'; playerId: PlayerId }
   | { type: 'RESULT_ENTER_CARDS'; playerId: PlayerId; cards: Card[] }
+  /** Physical: "Enter my hand" (private; marks the player seen). */
+  | { type: 'ENTER_HAND'; playerId: PlayerId; cards: Card[] }
   | { type: 'ADJUST'; from: AdjustTarget; to: AdjustTarget; amount: number; reason: string };
 
 export type TableOnlyAction =
@@ -219,6 +236,10 @@ export type TeenPattiEvent =
   | { type: 'RESULT_CONFIRMED'; playerId: PlayerId }
   | { type: 'RESULT_DISPUTED'; playerId: PlayerId }
   | { type: 'RESULT_CARDS_ENTERED'; playerId: PlayerId }
+  /** Physical: a player entered (or changed) their hand. Says nothing about the cards. */
+  | { type: 'HAND_ENTERED'; playerId: PlayerId }
+  /** Entered hands in a comparison share a card; these players must re-check. */
+  | { type: 'HANDS_CLASH'; playerIds: PlayerId[] }
   | { type: 'ROUND_ENDED'; result: RoundResult }
   | { type: 'ROUND_CANCELLED'; roundNumber: number }
   | { type: 'CHIPS_ADJUSTED'; from: AdjustTarget; to: AdjustTarget; amount: number; reason: string }

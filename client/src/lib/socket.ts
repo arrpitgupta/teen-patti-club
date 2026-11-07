@@ -83,6 +83,19 @@ export async function act<E extends ClientEventName, T = unknown>(
   return ack.data;
 }
 
+/**
+ * Like `act`, but says whether it worked. Use this when the server answers with no data
+ * (`act` returns null both for "ok, no data" and for errors).
+ */
+export async function actOk<E extends ClientEventName>(
+  name: E,
+  payload: ClientEventPayload<E> | Record<string, never> = {},
+): Promise<boolean> {
+  const ack = await send(name, payload);
+  if (!ack.ok) useGame.getState().pushError(ack.error.message);
+  return ack.ok;
+}
+
 export async function reconnect(code: string, playerToken: string): Promise<Ack<unknown>> {
   return send('game:reconnect', { code, playerToken });
 }

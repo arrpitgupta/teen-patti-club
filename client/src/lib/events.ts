@@ -87,6 +87,10 @@ export function describeEvent(e: GameLogEvent, nameOf: NameOf): string | null {
       return ev.cardsEntered(nameOf(e.playerId));
     case 'YOU_WERE_KICKED':
       return ev.kickedYou;
+    case 'HAND_ENTERED':
+      return ev.handEntered(nameOf(e.playerId));
+    case 'HANDS_CLASH':
+      return ev.handsClash;
     case 'NUDGED':
       return ev.nudged(nameOf(e.by), nameOf(e.playerId));
     case 'REMATCH_CREATED':
@@ -121,4 +125,5 @@ export const TOAST_EVENTS: ReadonlySet<GameLogEvent['type']> = new Set([
   'RESULT_DISPUTED',
   'YOU_WERE_KICKED',
   'NUDGED',
+  'HANDS_CLASH',
 ]);

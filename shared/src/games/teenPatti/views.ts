@@ -48,7 +48,7 @@ export interface PublicTable {
 /** What only this player may see. */
 export interface PrivateView {
   playerId: PlayerId;
-  /** Own cards (digital), once the player has seen them or the round is over. */
+  /** Own cards: dealt (digital, once seen) or entered (physical "Enter my hand"). */
   hand: Card[] | null;
   /** Other players' cards this player is allowed to see (e.g. after a side show). */
   visibleHands: Record<PlayerId, Card[]>;
@@ -90,6 +90,7 @@ export function publicRound(r: RoundState): PublicRound {
               }
             : null,
           enteredBy: Object.keys(c.enteredCards),
+          clash: c.clash ?? false,
         }
       : null,
     result: r.result
@@ -138,6 +139,13 @@ export function privateView(t: TableState, playerId: PlayerId): PrivateView {
   }
 
   const c = r.comparison;
+  if (c && c.method === 'entered' && c.playerIds.includes(playerId)) {
+    // Comparing entered hands: the players involved check each other's cards (they are
+    // showing them at the table anyway). Nobody else sees them until the round ends.
+    for (const [id, cards] of Object.entries(c.enteredCards)) {
+      if (id !== playerId) view.visibleHands[id] = [...cards];
+    }
+  }
   if (c && c.method === 'enterCards' && c.playerIds.includes(playerId)) {
     for (const [id, cards] of Object.entries(c.enteredCards)) {
       if (id === playerId) view.myEnteredCards = [...cards];
@@ -177,6 +185,7 @@ export function tableFromPublic(pub: PublicTable): TableState {
                 method: r.comparison.method,
                 proposal: r.comparison.proposal,
                 enteredCards: Object.fromEntries(r.comparison.enteredBy.map((id) => [id, []])),
+                clash: r.comparison.clash,
               }
             : null,
           sideShowReveals: [],

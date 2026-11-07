@@ -33,6 +33,7 @@ const ROUND_ACTIONS = new Set<RoundAction['type']>([
   'RESULT_CONFIRM',
   'RESULT_DISPUTE',
   'RESULT_ENTER_CARDS',
+  'ENTER_HAND',
 ]);
 
 /** Actions that UNDO may remove. "See cards" is irreversible; adjustments have their own log. */
@@ -213,6 +214,8 @@ export function applyAction(state: TableState, action: TableAction): TeenPattiRe
             packed: false,
             blindBets: 0,
             hand: null,
+            entered: false,
+            handLocked: false,
           };
         });
 

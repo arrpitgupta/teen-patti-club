@@ -110,7 +110,9 @@ export function TableView({ m, wide }: { m: TableModel; wide: boolean }) {
                   className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
                   style={{
                     left: `calc(${s.x}% + ${side * (half + 6)}px)`,
-                    top: `calc(${s.y}% + ${half - 2}px)`,
+                    // Compact seats put the status pill right under the avatar: keep the
+                    // dealer chip beside the avatar instead of on the pill.
+                    top: compact ? `${s.y}%` : `calc(${s.y}% + ${half - 2}px)`,
                   }}
                 >
                   <DealerChip />

@@ -42,6 +42,10 @@ export const ClientEventSchemas = {
   'result:tapWinner': z
     .object({ winnerIds: z.array(PlayerIdSchema).min(1).max(10), ...actAs })
     .strict(),
+  /** Physical: "Enter my hand" (private). */
+  'action:enterHand': z
+    .object({ cards: z.tuple([CardSchema, CardSchema, CardSchema]), ...actAs })
+    .strict(),
   'result:confirm': seatAction,
   'result:dispute': seatAction,
   'result:enterCards': z

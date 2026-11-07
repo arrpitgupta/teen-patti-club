@@ -12,4 +12,5 @@ export const haptics = {
   overdue: () => vibrate([200, 100, 200]),
   win: () => vibrate([40, 40, 40, 40, 120]),
   tap: () => vibrate(10),
+  nudge: () => vibrate([90, 50, 90, 50, 90]),
 };

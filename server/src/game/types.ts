@@ -61,6 +61,9 @@ export interface ServerGame {
   chatSeq: number;
   /** Ended games: the rematch game and which old player became which new player. */
   rematch: RematchInfo | null;
+  // Runtime only: whose turn it is and since when (for nudges); last nudge.
+  turn: { key: string; playerId: string; since: number } | null;
+  lastNudgeAt: number | null;
 }
 
 export interface RematchInfo {

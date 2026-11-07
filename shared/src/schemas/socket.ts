@@ -68,6 +68,8 @@ export const ClientEventSchemas = {
   /** quick = a preset line (floats over the seat like a reaction). */
   'chat:send': z.object({ text: ChatTextSchema, quick: z.boolean().optional() }).strict(),
   'chat:react': z.object({ emoji: ReactionSchema }).strict(),
+  /** Buzz the player to act (after NUDGE_AFTER_MS on their turn, once per NUDGE_COOLDOWN_MS). */
+  'game:nudge': empty,
   /** After the game ended: create the rematch (first tap) or join it (everyone else). */
   'game:rematch': empty,
 } as const;

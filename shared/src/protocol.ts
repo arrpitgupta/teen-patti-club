@@ -5,6 +5,11 @@ import type { PlayerId, TeenPattiEvent } from './games/teenPatti/types';
 import type { PrivateView, PublicTable } from './games/teenPatti/views';
 import type { Payment } from './settlement/settlement';
 
+/** A player may be nudged once they have had the turn this long… */
+export const NUDGE_AFTER_MS = 15_000;
+/** …and at most once per this long at a table. */
+export const NUDGE_COOLDOWN_MS = 20_000;
+
 export type ServerErrorCode =
   | EngineErrorCode
   | 'INVALID_PAYLOAD'
@@ -16,6 +21,7 @@ export type ServerErrorCode =
   | 'NOT_HOST'
   | 'FORBIDDEN'
   | 'PAUSED'
+  | 'TOO_SOON'
   | 'BAD_TOKEN'
   | 'INTERNAL';
 
@@ -58,6 +64,8 @@ export type ServerLogEvent =
   | { type: 'UNDO_REJECTED' }
   /** Physical mode: the turn timer ran out for this player (no auto-pack). */
   | { type: 'TURN_OVERDUE'; playerId: PlayerId }
+  /** `by` asked `playerId` (the player to act) to hurry up. */
+  | { type: 'NUDGED'; playerId: PlayerId; by: PlayerId }
   /** After the game ended, this player started a rematch (same players and settings). */
   | { type: 'REMATCH_CREATED'; playerId: PlayerId }
   /** Sent only to a kicked player's sockets. */
@@ -140,6 +148,10 @@ export interface PublicGameState {
   players: PublicPlayer[];
   table: PublicTable;
   timer: TimerInfo | null;
+  /** Who the table is waiting on and since when (server ms); null when nobody is. */
+  turn: { playerId: PlayerId; since: number } | null;
+  /** Last nudge at this table (server ms). */
+  lastNudgeAt: number | null;
   pendingUndo: { requestedBy: PlayerId; at: number } | null;
   /** The host has been away > 2 min: this player may take over with `host:claim`. */
   hostTransferOffer: { candidateId: PlayerId; at: number } | null;

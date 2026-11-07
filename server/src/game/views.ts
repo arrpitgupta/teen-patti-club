@@ -44,6 +44,8 @@ export function publicState(game: ServerGame, now: number): PublicGameState {
           durationMs: game.timer.durationMs,
         }
       : null,
+    turn: game.turn ? { playerId: game.turn.playerId, since: game.turn.since } : null,
+    lastNudgeAt: game.lastNudgeAt,
     pendingUndo: game.pendingUndo ? { ...game.pendingUndo } : null,
     hostTransferOffer: game.hostTransferOffer ? { ...game.hostTransferOffer } : null,
     stats: structuredClone(game.stats),

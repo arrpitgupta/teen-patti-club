@@ -1,4 +1,4 @@
-import type { ClientEventName } from '@tpc/shared';
+import { NUDGE_AFTER_MS, NUDGE_COOLDOWN_MS, type ClientEventName } from '@tpc/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { t } from '../../i18n';
@@ -6,6 +6,7 @@ import { chips } from '../../lib/format';
 import { joinNames, type TableModel } from '../../lib/model';
 import { act } from '../../lib/socket';
 import { getPrefs } from '../../lib/storage';
+import { useServerNow } from '../../lib/useNow';
 import { Icon } from '../ui/Icon';
 import { BetSheet } from './BetSheet';
 import { DealPanel } from './DealPanel';
@@ -97,7 +98,10 @@ export function ActionDock({ m, wide }: { m: TableModel; wide: boolean }) {
     return (
       <Dock>
         {sideShowSheet}
-        <p className="text-[13px] text-ink-300">{text}</p>
+        <div className="flex min-h-[44px] items-center justify-between gap-3">
+          <p className="text-[13px] text-ink-300">{text}</p>
+          <NudgeButton m={m} />
+        </div>
         {canSee && (
           <button
             type="button"
@@ -255,6 +259,38 @@ export function ActionDock({ m, wide }: { m: TableModel; wide: boolean }) {
       )}
       {sideShowSheet}
     </Dock>
+  );
+}
+
+/** Appears once the player to act has had NUDGE_AFTER_MS, at most once per cooldown. */
+function NudgeButton({ m }: { m: TableModel }) {
+  const now = useServerNow(1000);
+  const [sentAt, setSentAt] = useState<number | null>(null);
+  const turn = m.pub.turn;
+  const target = turn ? m.playerOf(turn.playerId) : undefined;
+  if (!turn || !target || turn.playerId === m.meId || target.isOffline) return null;
+  const last = Math.max(m.pub.lastNudgeAt ?? 0, sentAt ?? 0);
+  const ready = now - turn.since >= NUDGE_AFTER_MS && now - last >= NUDGE_COOLDOWN_MS;
+  if (!ready) {
+    return sentAt !== null && now - sentAt < 2500 ? (
+      <span className="flex shrink-0 items-center gap-1 text-[13px] font-semibold text-ink-300">
+        <Icon name="check" size={16} />
+        {t.nudge.sent}
+      </span>
+    ) : null;
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setSentAt(now);
+        void act('game:nudge', {});
+      }}
+      className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-panel px-3.5 text-[13px] font-semibold active:bg-panel-raised"
+    >
+      <Icon name="bell" size={16} />
+      {t.nudge.button(target.name)}
+    </button>
   );
 }
 

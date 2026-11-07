@@ -278,6 +278,13 @@ export const en = {
     muteChat: 'Mute chat',
   },
 
+  nudge: {
+    button: (name: string) => `Nudge ${name}`,
+    /** What the nudged player sees (with a buzz). */
+    you: (by: string) => `${by}: Jaldi chal!`,
+    sent: 'Nudged',
+  },
+
   chat: {
     title: 'Table chat',
     open: 'Open chat',
@@ -430,6 +437,7 @@ export const en = {
     cardsEntered: (name: string) => `${name} entered their cards`,
     kickedYou: 'The host removed you from this game.',
     rematch: (name: string) => `${name} started a rematch`,
+    nudged: (by: string, who: string) => `${by} nudged ${who}`,
   },
 };
 

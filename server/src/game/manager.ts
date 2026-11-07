@@ -7,6 +7,8 @@ import {
   describeHandValue,
   evaluateHand,
   isRoundInProgress,
+  NUDGE_AFTER_MS,
+  NUDGE_COOLDOWN_MS,
   rankByNet,
   settle,
   shuffle,
@@ -52,6 +54,8 @@ export interface ManagerOptions {
   persistDebounceMs: number;
   /** Ended games stay in memory this long so clients can still see results. */
   endedGameTtlMs: number;
+  nudgeAfterMs: number;
+  nudgeCooldownMs: number;
   randomInt: (maxExclusive: number) => number;
   now: () => number;
 }
@@ -62,6 +66,8 @@ export const DEFAULT_MANAGER_OPTIONS: ManagerOptions = {
   turnMs: (s) => s * 1000,
   persistDebounceMs: 300,
   endedGameTtlMs: 30 * 60_000,
+  nudgeAfterMs: NUDGE_AFTER_MS,
+  nudgeCooldownMs: NUDGE_COOLDOWN_MS,
   randomInt: secureRandomInt,
   now: Date.now,
 };
@@ -146,6 +152,7 @@ export class GameManager {
     for (const s of snapshots) {
       const game = this.hydrate(s);
       this.games.set(game.code, game);
+      this.refreshTurn(game);
       this.refreshTimer(game);
       this.refreshHostAway(game);
     }
@@ -207,6 +214,8 @@ export class GameManager {
       chat: [],
       chatSeq: 0,
       rematch: null,
+      turn: null,
+      lastNudgeAt: null,
     };
     this.games.set(code, game);
     const added = this.addPlayer(game, input, hashToken(token), false, playerId);
@@ -546,6 +555,10 @@ export class GameManager {
       case 'game:end':
         return isHost ? this.endGame(game) : needHost();
 
+      case 'game:nudge':
+        if (game.status !== 'active') return fail('GAME_NOT_STARTED', "The game hasn't started.");
+        return this.nudge(game, me);
+
       case 'chat:send': {
         const { text, quick } = payload as ClientEventPayload<'chat:send'>;
         if (quick && text.length > QUICK_MAX_CHARS) {
@@ -751,6 +764,7 @@ export class GameManager {
     const entries = this.pushLog(game, events);
     game.version += 1;
     if (persist !== 'none') game.updatedAt = this.now();
+    this.refreshTurn(game);
     this.refreshTimer(game);
     this.refreshHostAway(game);
     if (persist === 'now') this.persistNow(game);
@@ -759,6 +773,39 @@ export class GameManager {
   }
 
   // ---------- Turn timer & disconnect grace ----------
+
+  /** Remember when the current turn started (a new turn, phase or round restarts it). */
+  private refreshTurn(game: ServerGame): void {
+    const actor = this.currentActor(game);
+    if (!actor) {
+      game.turn = null;
+      return;
+    }
+    const r = game.table.round!;
+    // Same key as the turn timer: someone else looking at their cards doesn't restart it.
+    const key = `${r.roundNumber}:${r.phase}:${actor}`;
+    if (game.turn?.key !== key) game.turn = { key, playerId: actor, since: this.now() };
+  }
+
+  private nudge(game: ServerGame, me: ServerPlayer): Result<unknown> {
+    const now = this.now();
+    const turn = game.turn;
+    if (!turn) return fail('ILLEGAL_ACTION', 'Nobody is taking their turn right now.');
+    if (turn.playerId === me.id) return fail('ILLEGAL_ACTION', "It's your turn!");
+    const target = game.players.find((p) => p.id === turn.playerId);
+    if (target?.isOffline) {
+      return fail('ILLEGAL_ACTION', 'The host plays for that seat.');
+    }
+    if (now - turn.since < this.opts.nudgeAfterMs) {
+      return fail('TOO_SOON', 'Give them a few more seconds.');
+    }
+    if (game.lastNudgeAt !== null && now - game.lastNudgeAt < this.opts.nudgeCooldownMs) {
+      return fail('TOO_SOON', 'They were just nudged.');
+    }
+    game.lastNudgeAt = now;
+    this.commit(game, [{ type: 'NUDGED', playerId: turn.playerId, by: me.id }], 'none');
+    return ok(null);
+  }
 
   /** Who the game is waiting on right now (turn player or side-show target). */
   private currentActor(game: ServerGame): string | null {
@@ -1009,6 +1056,8 @@ export class GameManager {
       chat: s.chat ?? [],
       chatSeq: s.chatSeq ?? s.chat?.at(-1)?.id ?? 0,
       rematch: s.rematch ?? null,
+      turn: null,
+      lastNudgeAt: null,
     };
   }
 }

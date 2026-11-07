@@ -87,6 +87,15 @@ export const useGame = create<GameStore>((set, get) => ({
       if (event.type === 'YOU_WERE_KICKED') set({ kicked: true });
       if (event.type === 'TURN_OVERDUE' && event.playerId === playerId) haptics.overdue();
       if (event.type === 'ROUND_ENDED' && playerId && event.result.payouts[playerId]) haptics.win();
+      if (event.type === 'NUDGED') {
+        if (event.playerId === playerId) {
+          haptics.nudge();
+          get().pushToast(t.nudge.you(nameOf(event.by)));
+        } else if (event.by !== playerId) {
+          get().pushToast(describeEvent(event, nameOf)!);
+        }
+        continue;
+      }
       if (!TOAST_EVENTS.has(event.type)) continue;
       // Don't toast your own actions back to you.
       if (

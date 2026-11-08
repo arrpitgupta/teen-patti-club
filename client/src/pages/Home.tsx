@@ -21,8 +21,8 @@ export default function Home() {
   useEffect(() => {
     const controller = new AbortController();
     const slow = setTimeout(() => setStatus((s) => (s === 'waking' ? 'slow' : s)), 4000);
-    // Render's free tier can take ~30 s to cold-start.
-    const giveUp = setTimeout(() => controller.abort(), 60_000);
+    // Render's free plan sleeps after 15 idle minutes; waking it can take up to a minute or more.
+    const giveUp = setTimeout(() => controller.abort(), 120_000);
     fetch(`${SERVER_URL}/health`, { signal: controller.signal })
       .then((res) => setStatus(res.ok ? 'ready' : 'offline'))
       .catch(() => setStatus('offline'))

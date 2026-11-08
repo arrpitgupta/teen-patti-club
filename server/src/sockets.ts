@@ -14,6 +14,7 @@ import type { GameManager } from './game/manager';
 import type { Result, ServerGame } from './game/types';
 import { privateState, publicState } from './game/views';
 import { log } from './util/log';
+import { during } from './util/monitor';
 import { TokenBucket } from './util/rateLimit';
 
 interface SocketData {
@@ -184,7 +185,9 @@ export function registerSockets(
               if (!data.code || !data.playerId) {
                 return error('NOT_IN_GAME', 'Join a game first.');
               }
-              const res = manager.handle(data.code, data.playerId, name, parsed.data);
+              const res = during(`socket:${name} ${data.code}`, () =>
+                manager.handle(data.code!, data.playerId!, name, parsed.data),
+              );
               if (res.ok && name === 'game:leave') unbind(socket, false);
               return reply(res);
             }

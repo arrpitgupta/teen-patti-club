@@ -12,6 +12,7 @@ import { createRoutes } from './routes';
 import { registerSockets, type SocketOptions } from './sockets';
 import type { GameStore } from './store/types';
 import { log } from './util/log';
+import { during } from './util/monitor';
 
 export interface ServerDeps {
   config: Config;
@@ -43,6 +44,7 @@ export function createServer({
   const origin = originChecker(config);
   const app = express();
   app.set('trust proxy', 1);
+  app.use((req, _res, next) => during(`http:${req.method} ${req.path}`, next));
   app.use(cors({ origin }));
   app.use(express.json({ limit: '32kb' }));
 

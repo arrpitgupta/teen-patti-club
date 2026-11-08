@@ -39,6 +39,7 @@ import {
   tokenMatches,
 } from '../util/crypto';
 import { log } from '../util/log';
+import { during } from '../util/monitor';
 import { GroupService } from './groups';
 import { privateState, publicState } from './views';
 import {
@@ -251,7 +252,7 @@ export class GameManager {
     }
     let count = 0;
     for (const s of snapshots) {
-      if (await this.restoreOne(s)) count += 1;
+      if (await during(`restore ${String(s?.code)}`, () => this.restoreOne(s))) count += 1;
       await new Promise<void>((resolve) => setImmediate(resolve));
     }
     if (count > 0) log.info(`restored ${count} game(s)`);
@@ -1101,7 +1102,10 @@ export class GameManager {
     const delay = Math.max(0, timer.deadline - this.now());
     this.turnTimers.set(
       game.code,
-      setTimeout(() => this.onTimerFired(game.code, timer), delay),
+      setTimeout(
+        () => during(`timer:${timer.kind} ${game.code}`, () => this.onTimerFired(game.code, timer)),
+        delay,
+      ),
     );
   }
 
@@ -1188,10 +1192,14 @@ export class GameManager {
     if (awayFor < this.opts.hostAwayMs) {
       this.hostTimers.set(
         game.code,
-        setTimeout(() => {
-          this.hostTimers.delete(game.code);
-          if (this.games.get(game.code) === game) this.commit(game, [], 'none');
-        }, this.opts.hostAwayMs - awayFor),
+        setTimeout(
+          () =>
+            during(`timer:hostAway ${game.code}`, () => {
+              this.hostTimers.delete(game.code);
+              if (this.games.get(game.code) === game) this.commit(game, [], 'none');
+            }),
+          this.opts.hostAwayMs - awayFor,
+        ),
       );
       return;
     }
@@ -1213,10 +1221,14 @@ export class GameManager {
     if (this.persistTimers.has(game.code) || this.stopped) return;
     this.persistTimers.set(
       game.code,
-      setTimeout(() => {
-        this.persistTimers.delete(game.code);
-        this.persistNow(game);
-      }, this.opts.persistDebounceMs),
+      setTimeout(
+        () =>
+          during(`timer:persist ${game.code}`, () => {
+            this.persistTimers.delete(game.code);
+            this.persistNow(game);
+          }),
+        this.opts.persistDebounceMs,
+      ),
     );
   }
 
@@ -1249,10 +1261,14 @@ export class GameManager {
     if (this.stopped) return;
     this.evictTimers.set(
       game.code,
-      setTimeout(() => {
-        this.evictTimers.delete(game.code);
-        if (this.games.get(game.code)?.status === 'ended') this.games.delete(game.code);
-      }, this.opts.endedGameTtlMs),
+      setTimeout(
+        () =>
+          during(`timer:evict ${game.code}`, () => {
+            this.evictTimers.delete(game.code);
+            if (this.games.get(game.code)?.status === 'ended') this.games.delete(game.code);
+          }),
+        this.opts.endedGameTtlMs,
+      ),
     );
   }
 

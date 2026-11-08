@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { t } from '../i18n';
+import { startKeepAlive } from '../lib/config';
 import { buildModel } from '../lib/model';
 import { autoSubscribe } from '../lib/push';
 import { getSocket, reconnect } from '../lib/socket';
@@ -36,6 +37,8 @@ export default function GamePage() {
 
   // Once this phone is seated in the game: resubscribe to "your turn" pushes if allowed.
   const joined = pub?.code === code && pub.status !== 'ended';
+  // Keep the (free-plan) server awake while this game is open.
+  useEffect(() => (joined ? startKeepAlive() : undefined), [joined]);
   useEffect(() => {
     if (joined) void autoSubscribe();
   }, [joined, code]);

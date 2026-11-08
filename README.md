@@ -61,7 +61,8 @@ Live: client on **Vercel** (`https://teen-patti-club.vercel.app`), server on **R
    - **Root directory:** leave empty (repo root, so the pnpm workspace and `@tpc/shared` are available).
    - **Build command:** `corepack enable && NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @tpc/server build`
      (`NODE_ENV=development` for the install only, so the build tools in devDependencies are installed even though the service runs with `NODE_ENV=production`).
-   - **Start command:** `pnpm --filter @tpc/server start`
+   - **Start command:** `node server/dist/index.js`
+     (not `pnpm … start`: through pnpm, Render's SIGTERM reaches pnpm instead of the server, so games aren't saved on shutdown, and every wake-up first downloads pnpm via Corepack).
    - **Health check path:** `/health`
    - **Auto-deploy:** on commit to `main`.
 
@@ -97,7 +98,9 @@ The service worker keeps an offline copy of the app (network-first for pages, ca
 
 ### Free-plan notes
 
-- Render's free plan sleeps after ~15 minutes without traffic; the first visit then takes ~30–60 s (the Home screen says "Waking up the table…"). Live games are saved to MongoDB and restored on start, and players reconnect automatically.
+- Render's free plan stops the server after ~15 minutes without HTTP traffic (the log shows `SIGTERM received, saving games…`). The next visit starts it again, which takes ~30–60 s; requests wait meanwhile and the Home screen says "Waking up the table…". Live games are saved to MongoDB and restored on start, and players reconnect automatically.
+- While a game is open on a visible screen, the client pings `/health` every 5 minutes so the server doesn't sleep mid-game. To keep it awake all the time, point a free uptime monitor (e.g. UptimeRobot) at `/health` every 10 minutes, or use a paid instance.
+- The server logs a `heartbeat` line every 5 minutes (uptime, memory, event-loop lag, games, sockets) and warns `event loop was blocked for … ms; last activity: …` if anything holds it for over 500 ms.
 - "Your turn" notifications need the server awake, so they only arrive while a game is active.
 - Web push and installing the app need https: they work on the Vercel URL, not on `http://<LAN IP>` during development. iPhone notifications only work after "Add to Home Screen" (iOS 16.4+).
 - Vercel preview deployments (`*-git-*.vercel.app`) are not in `CLIENT_ORIGIN`, so they can't reach the server; add their URL there if you want to test one.

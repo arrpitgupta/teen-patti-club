@@ -31,3 +31,16 @@ export function resultsUrl(resultsId: string): string {
 export function groupUrl(groupId: string): string {
   return `${shareOrigin()}/group/${groupId}`;
 }
+
+/**
+ * Render's free plan stops the server after 15 minutes without HTTP traffic, and a waiting
+ * table may send nothing for that long. While a game is open, ping /health every 5 minutes.
+ */
+export function startKeepAlive(): () => void {
+  const ping = () => {
+    if (document.visibilityState !== 'visible') return;
+    void fetch(`${SERVER_URL}/health`, { cache: 'no-store' }).catch(() => undefined);
+  };
+  const timer = setInterval(ping, 5 * 60_000);
+  return () => clearInterval(timer);
+}

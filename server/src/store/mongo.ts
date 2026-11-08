@@ -57,7 +57,7 @@ const GameSchema = new Schema(
     endedAt: { type: Date, default: null },
   },
   // minimize: false keeps empty objects ({}) that the engine state relies on.
-  { minimize: false, versionKey: false, collection: 'games' },
+  { minimize: false, versionKey: false, bufferTimeoutMS: 30_000, collection: 'games' },
 );
 // Lobby games with no activity for 24 h are deleted.
 GameSchema.index(
@@ -88,7 +88,7 @@ const RoundSchema = new Schema(
     startedAt: Date,
     endedAt: Date,
   },
-  { minimize: false, versionKey: false, collection: 'rounds' },
+  { minimize: false, versionKey: false, bufferTimeoutMS: 30_000, collection: 'rounds' },
 );
 RoundSchema.index({ gameId: 1, roundNumber: 1 }, { unique: true });
 
@@ -101,7 +101,7 @@ const GroupSchema = new Schema(
     createdAt: Date,
     updatedAt: Date,
   },
-  { minimize: false, versionKey: false, collection: 'groups' },
+  { minimize: false, versionKey: false, bufferTimeoutMS: 30_000, collection: 'groups' },
 );
 
 type Doc = Record<string, unknown>;
@@ -159,6 +159,27 @@ export class MongoGameStore implements GameStore {
     this.games = conn.model<Doc>('Game', GameSchema);
     this.rounds = conn.model<Doc>('Round', RoundSchema);
     this.groups = conn.model<Doc>('Group', GroupSchema);
+  }
+
+  /**
+   * Returns the store at once and connects in the background (`ready`). Mongoose buffers
+   * queries until the connection is up, so the HTTP server can listen (and answer /health)
+   * while MongoDB is still connecting — e.g. right after a free-plan wake-up.
+   */
+  static open(uri: string): { store: MongoGameStore; ready: Promise<void> } {
+    const conn = mongoose.createConnection(uri, { serverSelectionTimeoutMS: 15_000 });
+    const store = new MongoGameStore(conn);
+    const ready = conn
+      .asPromise()
+      .then(() =>
+        Promise.all([
+          store.games.createIndexes(),
+          store.rounds.createIndexes(),
+          store.groups.createIndexes(),
+        ]),
+      )
+      .then(() => undefined);
+    return { store, ready };
   }
 
   /** `dbName` overrides the database in the URI (used by tests). */

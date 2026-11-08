@@ -87,6 +87,7 @@ export function createRoutes(
       build: opts.buildId,
       push: manager.opts.push !== null,
       restoring: manager.restoring,
+      memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
       needsAttention: manager.skipped.size,
       uptime: process.uptime(),
       games: manager.gameCount,

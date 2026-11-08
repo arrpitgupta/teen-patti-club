@@ -68,6 +68,11 @@ export function createRoutes(
     };
   };
 
+  // Game data waits until restored games are back in memory (/health does not).
+  router.use('/api', (_req, _res, next) => {
+    manager.ready.then(() => next(), next);
+  });
+
   const badRequest = (res: Response, message: string) => {
     res.status(400).json({ error: message });
   };
@@ -81,6 +86,8 @@ export function createRoutes(
       engine: ENGINE_VERSION,
       build: opts.buildId,
       push: manager.opts.push !== null,
+      restoring: manager.restoring,
+      needsAttention: manager.skipped.size,
       uptime: process.uptime(),
       games: manager.gameCount,
     });

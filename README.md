@@ -75,6 +75,8 @@ Live: client on **Vercel** (`https://teen-patti-club.vercel.app`), server on **R
    | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | From `npx web-push generate-vapid-keys` (run once, keep them). Without them, "your turn" notifications are off. |
    | `VAPID_SUBJECT`                          | `mailto:` address or `https://` URL push services can contact                                                   |
 
+   The server listens on `0.0.0.0` (override with `HOST`); Render's proxy can't reach a server bound only to IPv6 `::` or `localhost`. It starts answering `/health` before it has restored the saved games; a game that can't be restored is logged, marked `needsAttention` in the `games` collection and skipped (`/health` shows how many). To retry such a game, clear its `needsAttention` field in Atlas and restart.
+
    On start the server logs a warning for a non-https `CLIENT_ORIGIN` or missing push settings.
 
 3. **Vercel** (client): import the repo and set:

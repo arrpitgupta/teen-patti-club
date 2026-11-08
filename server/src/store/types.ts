@@ -52,6 +52,8 @@ export interface GameSnapshot {
   resultsId?: string;
   /** The group this game was started from. */
   groupId?: string | null;
+  /** Set when restoring this game failed; it is then skipped (see the server log). */
+  needsAttention?: { reason: string; at: number } | null;
   createdAt: number;
   updatedAt: number;
   endedAt: number | null;
@@ -109,6 +111,7 @@ export interface GameStore {
   listRounds(code: string): Promise<RoundRecord[]>;
   findGamesByTokenHashes(hashes: string[], limit: number): Promise<GameSnapshot[]>;
   findGameByResultsId(resultsId: string): Promise<GameSnapshot | null>;
+  markNeedsAttention(code: string, reason: string, at: number): Promise<void>;
   /** Adds a voluntarily shown hand to an already saved round. */
   addShownHand(code: string, roundNumber: number, playerId: string, cards: string[]): Promise<void>;
   saveGroup(group: GroupRecord): Promise<void>;

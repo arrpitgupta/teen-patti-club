@@ -4,6 +4,8 @@ const EnvSchema = z.object({
   MONGODB_URI: z.string().optional(),
   CLIENT_ORIGIN: z.string().default('http://localhost:5317'),
   PORT: z.coerce.number().int().positive().default(4000),
+  /** Interface to listen on. Render (and most hosts) need 0.0.0.0, not localhost or "::". */
+  HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   // Web push ("your turn" notifications). Generate with: npx web-push generate-vapid-keys
   // Without them, development uses throwaway keys and production has push turned off.

@@ -40,6 +40,7 @@ import {
 } from '../util/crypto';
 import { log } from '../util/log';
 import { GroupService } from './groups';
+import { privateState, publicState } from './views';
 import {
   fail,
   ok,
@@ -63,6 +64,10 @@ export interface ManagerOptions {
   nudgeCooldownMs: number;
   /** Web push sender; null = notifications off. */
   push: PushSender | null;
+  /** Restoring after a start: give up loading the open games after this long… */
+  restoreLoadTimeoutMs: number;
+  /** …and skip (and mark) any single game that takes longer than this to restore. */
+  restoreGameBudgetMs: number;
   randomInt: (maxExclusive: number) => number;
   now: () => number;
 }
@@ -76,6 +81,8 @@ export const DEFAULT_MANAGER_OPTIONS: ManagerOptions = {
   nudgeAfterMs: NUDGE_AFTER_MS,
   nudgeCooldownMs: NUDGE_COOLDOWN_MS,
   push: null,
+  restoreLoadTimeoutMs: 30_000,
+  restoreGameBudgetMs: 1_000,
   randomInt: secureRandomInt,
   now: Date.now,
 };
@@ -112,6 +119,45 @@ export interface PlayerInput {
   avatar: string;
   /** Group games: play as this existing member. */
   memberId?: string | undefined;
+}
+
+const needsAttention = () =>
+  fail<never>('GAME_NOT_FOUND', "This game couldn't be loaded. Please start a new game.");
+
+function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e: unknown) => {
+        clearTimeout(timer);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      },
+    );
+  });
+}
+
+/** Cheap sanity checks on a restored game; throws with a readable reason. */
+function checkRestored(game: ServerGame): void {
+  if (!/^[A-Z0-9]{6}$/.test(game.code)) throw new Error('bad game code');
+  if (!game.table || !Array.isArray(game.table.players)) throw new Error('missing table state');
+  if (!Array.isArray(game.players) || game.players.length === 0) throw new Error('no players');
+  const ids = new Set(game.players.map((p) => p.id));
+  for (const tp of game.table.players) {
+    if (!ids.has(tp.id)) throw new Error(`table seat ${tp.id} has no player`);
+    if (!Number.isFinite(tp.balance)) throw new Error(`balance of ${tp.id} is not a number`);
+  }
+  if (!ids.has(game.hostPlayerId)) throw new Error('host is not a player');
+  const r = game.table.round;
+  if (game.status === 'active' && r) {
+    if (!Array.isArray(r.players)) throw new Error('round has no players');
+    if (r.phase === 'BETTING' && !r.players.some((p) => p.id === r.turnId)) {
+      throw new Error('the turn belongs to nobody in the round');
+    }
+  }
 }
 
 const emptyStats = (): PlayerStats => ({
@@ -161,20 +207,102 @@ export class GameManager {
 
   // ---------- Lifecycle ----------
 
-  /** Load every lobby/active game from the store (after a restart or redeploy). */
-  async restore(): Promise<number> {
-    const snapshots = await this.store.loadOpenGames();
+  /** True while games are being loaded after a start; /health still answers meanwhile. */
+  restoring = false;
+  /** Games skipped on restore because they failed to load (reason per code). */
+  readonly skipped = new Map<string, string>();
+  private restored: Promise<void> = Promise.resolve();
+
+  /** Resolves when restoring has finished (game requests wait for it). */
+  get ready(): Promise<void> {
+    return this.restored;
+  }
+
+  /**
+   * Load every lobby/active game from the store (after a restart or redeploy). One bad game
+   * never stops the server: a game that throws, or takes longer than `restoreGameBudgetMs`, is
+   * logged, marked `needsAttention` in the store and skipped. Yields between games so HTTP
+   * requests (e.g. Render's health check) are answered while restoring.
+   */
+  restore(): Promise<number> {
+    this.restoring = true;
+    const run = this.restoreAll().finally(() => {
+      this.restoring = false;
+    });
+    this.restored = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  private async restoreAll(): Promise<number> {
+    let snapshots: GameSnapshot[];
+    try {
+      snapshots = await withTimeout(
+        this.store.loadOpenGames(),
+        this.opts.restoreLoadTimeoutMs,
+        'loading open games',
+      );
+    } catch (e) {
+      // Phones still reconnect: each game is then loaded on demand (with the same guard).
+      log.error('restore: could not load open games; they load when players reconnect', e);
+      return 0;
+    }
+    let count = 0;
     for (const s of snapshots) {
-      const game = this.hydrate(s);
-      await this.attachGroup(game);
-      this.games.set(game.code, game);
-      if (!s.resultsId) this.persistNow(game);
+      if (await this.restoreOne(s)) count += 1;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    if (count > 0) log.info(`restored ${count} game(s)`);
+    if (this.skipped.size > 0) log.warn(`skipped ${this.skipped.size} game(s) that need attention`);
+    return count;
+  }
+
+  /** Hydrates one snapshot and starts its timers; false (and marked) if it is broken or slow. */
+  private async restoreOne(s: GameSnapshot): Promise<boolean> {
+    const code = typeof s?.code === 'string' ? s.code : '?';
+    const started = Date.now();
+    let game: ServerGame;
+    try {
+      game = this.hydrate(s);
+      checkRestored(game);
+      await withTimeout(this.attachGroup(game), this.opts.restoreGameBudgetMs, 'loading group');
       this.refreshTurn(game, false);
       this.refreshTimer(game);
       this.refreshHostAway(game);
+      // Build every view once: a state the views can't handle fails here, not on a request.
+      publicState(game, this.now());
+      for (const p of game.players) privateState(game, p.id);
+    } catch (e) {
+      this.clearGameTimers(code);
+      await this.markNeedsAttention(code, e instanceof Error ? e.message : String(e));
+      return false;
     }
-    if (snapshots.length > 0) log.info(`restored ${snapshots.length} game(s)`);
-    return snapshots.length;
+    const took = Date.now() - started;
+    if (took > this.opts.restoreGameBudgetMs) {
+      this.clearGameTimers(code);
+      await this.markNeedsAttention(code, `restoring took ${took} ms`);
+      return false;
+    }
+    this.games.set(game.code, game);
+    if (!s.resultsId) this.persistNow(game);
+    return true;
+  }
+
+  private clearGameTimers(code: string): void {
+    for (const m of [this.turnTimers, this.hostTimers]) {
+      clearTimeout(m.get(code));
+      m.delete(code);
+    }
+  }
+
+  private async markNeedsAttention(code: string, reason: string): Promise<void> {
+    log.error(`restore: skipped game ${code} (needs attention): ${reason}`);
+    this.skipped.set(code, reason);
+    await this.store
+      .markNeedsAttention(code, reason, this.now())
+      .catch((e: unknown) => log.error(`restore: could not mark game ${code}`, e));
   }
 
   /** Write all pending snapshots now. */
@@ -264,17 +392,15 @@ export class GameManager {
   }
 
   async reconnect(code: string, playerToken: string): Promise<Result<ReconnectResult>> {
+    await this.ready;
     let game = this.games.get(code);
     if (!game) {
       // Ended games are not kept in memory forever; load one so its results can be shown.
       const snap = await this.store.findGame(code);
       if (!snap) return fail('GAME_NOT_FOUND', "That game doesn't exist.");
-      const fresh = !this.games.has(code);
-      game = this.games.get(code) ?? this.hydrate(snap);
-      if (fresh) await this.attachGroup(game);
-      game = this.games.get(code) ?? game;
-      this.games.set(code, game);
-      if (!snap.resultsId) this.persistNow(game);
+      if (snap.needsAttention) return needsAttention();
+      if (!this.games.has(code) && !(await this.restoreOne(snap))) return needsAttention();
+      game = this.games.get(code)!;
       if (game.status === 'ended') this.scheduleEviction(game);
     }
     const player = game.players.find((p) => p.tokenHash && tokenMatches(playerToken, p.tokenHash));

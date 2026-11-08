@@ -25,7 +25,10 @@ export interface AppServer {
   httpServer: HttpServer;
   io: SocketServer;
   manager: GameManager;
-  /** Restore games from the store, then listen. Returns the actual port. */
+  /**
+   * Listen first (so /health answers right away), then restore games from the store.
+   * Resolves with the actual port once restoring has finished.
+   */
   start(port: number): Promise<number>;
   /** flush=false simulates a crash: pending (debounced) writes are dropped. */
   stop(opts?: { flush?: boolean }): Promise<void>;
@@ -66,14 +69,15 @@ export function createServer({
     io,
     manager,
     async start(port) {
-      await manager.restore();
+      const restoring = manager.restore(); // game requests wait for it (manager.ready)
       await new Promise<void>((resolve, reject) => {
         httpServer.once('error', reject);
-        httpServer.listen(port, () => {
+        httpServer.listen(port, config.HOST, () => {
           httpServer.off('error', reject);
           resolve();
         });
       });
+      await restoring.catch((e: unknown) => log.error('restore failed', e));
       return (httpServer.address() as AddressInfo).port;
     },
     async stop({ flush = true } = {}) {

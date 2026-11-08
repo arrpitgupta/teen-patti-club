@@ -51,6 +51,7 @@ const GameSchema = new Schema(
     rematch: { type: Schema.Types.Mixed, default: null },
     resultsId: String,
     groupId: { type: String, default: null },
+    needsAttention: { type: Schema.Types.Mixed, default: null },
     createdAt: Date,
     updatedAt: Date,
     endedAt: { type: Date, default: null },
@@ -181,7 +182,9 @@ export class MongoGameStore implements GameStore {
   }
 
   async loadOpenGames(): Promise<GameSnapshot[]> {
-    const docs = await this.games.find({ status: { $in: ['lobby', 'active'] } }).lean<Doc[]>();
+    const docs = await this.games
+      .find({ status: { $in: ['lobby', 'active'] }, needsAttention: null })
+      .lean<Doc[]>();
     return docs.map(fromGameDoc);
   }
 
@@ -217,6 +220,13 @@ export class MongoGameStore implements GameStore {
       .limit(limit)
       .lean<Doc[]>();
     return docs.map(fromGameDoc);
+  }
+
+  async markNeedsAttention(code: string, reason: string, at: number): Promise<void> {
+    await this.games.updateOne(
+      { code },
+      { $set: { needsAttention: { reason: reason.slice(0, 500), at: new Date(at) } } },
+    );
   }
 
   async findGameByResultsId(resultsId: string): Promise<GameSnapshot | null> {

@@ -130,6 +130,7 @@ export function registerSockets(
 
     for (const name of Object.keys(ClientEventSchemas) as ClientEventName[]) {
       socket.on(name, async (payload: unknown, maybeAck?: unknown) => {
+        await manager.ready; // no game events while games are still being restored
         let ack = maybeAck;
         if (typeof payload === 'function') {
           ack = payload;

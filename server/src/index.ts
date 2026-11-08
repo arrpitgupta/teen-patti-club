@@ -26,7 +26,7 @@ async function main(): Promise<void> {
 
   const server = createServer({ config, store });
   const port = await server.start(config.PORT);
-  log.info(`listening on :${port} (allowed origin: ${config.CLIENT_ORIGIN})`);
+  log.info(`listening on ${config.HOST}:${port} (allowed origin: ${config.CLIENT_ORIGIN})`);
   for (const w of productionWarnings(config)) log.warn(w);
 
   let shuttingDown = false;

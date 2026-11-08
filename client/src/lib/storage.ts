@@ -146,3 +146,32 @@ export function saveChatRead(code: string, id: number): void {
 export function savePrefs(p: Prefs): void {
   writeJson(PREFS, p);
 }
+
+const GROUPS = 'tpc.groups';
+
+export interface SavedGroup {
+  id: string;
+  name: string;
+  openedAt: number;
+}
+
+/** Groups opened on this phone (the link is the only key), most recent first. */
+export function getGroups(): SavedGroup[] {
+  const raw = readJson<unknown>(GROUPS, []);
+  if (!Array.isArray(raw)) return [];
+  return (raw as Partial<SavedGroup>[])
+    .filter((g): g is SavedGroup => typeof g?.id === 'string' && typeof g.name === 'string')
+    .sort((a, b) => (b.openedAt || 0) - (a.openedAt || 0));
+}
+
+export function rememberGroup(id: string, name: string): void {
+  const rest = getGroups().filter((g) => g.id !== id);
+  writeJson(GROUPS, [{ id, name, openedAt: Date.now() }, ...rest].slice(0, 30));
+}
+
+export function forgetGroup(id: string): void {
+  writeJson(
+    GROUPS,
+    getGroups().filter((g) => g.id !== id),
+  );
+}

@@ -1,5 +1,12 @@
 import mongoose, { Schema, type Connection, type Model } from 'mongoose';
-import type { GameSnapshot, GameStore, RoundRecord, StoredPlayer } from './types';
+import type {
+  GameSnapshot,
+  GameStore,
+  GroupGameSnapshot,
+  GroupRecord,
+  RoundRecord,
+  StoredPlayer,
+} from './types';
 
 const LOBBY_TTL_SECONDS = 24 * 60 * 60;
 
@@ -16,6 +23,7 @@ const PlayerSchema = new Schema(
     joinedAt: Date,
     leftAt: { type: Date, default: null },
     push: { type: Schema.Types.Mixed, default: [] },
+    memberId: { type: String, default: null },
   },
   { _id: false },
 );
@@ -41,6 +49,8 @@ const GameSchema = new Schema(
     chat: Schema.Types.Mixed,
     chatSeq: Number,
     rematch: { type: Schema.Types.Mixed, default: null },
+    resultsId: String,
+    groupId: { type: String, default: null },
     createdAt: Date,
     updatedAt: Date,
     endedAt: { type: Date, default: null },
@@ -54,6 +64,11 @@ GameSchema.index(
   { expireAfterSeconds: LOBBY_TTL_SECONDS, partialFilterExpression: { status: 'lobby' } },
 );
 GameSchema.index({ 'players.tokenHash': 1 });
+GameSchema.index({ resultsId: 1 }, { unique: true, sparse: true });
+GameSchema.index(
+  { groupId: 1, createdAt: -1 },
+  { partialFilterExpression: { groupId: { $type: 'string' } } },
+);
 
 const RoundSchema = new Schema(
   {
@@ -66,6 +81,7 @@ const RoundSchema = new Schema(
     winnerIds: [String],
     winningHand: { type: String, default: null },
     revealedHands: Schema.Types.Mixed,
+    shownHands: { type: Schema.Types.Mixed, default: {} },
     actions: Schema.Types.Mixed,
     resolution: { type: String, enum: ['auto', 'tapWinner', 'enterCards', 'entered'] },
     startedAt: Date,
@@ -74,6 +90,18 @@ const RoundSchema = new Schema(
   { minimize: false, versionKey: false, collection: 'rounds' },
 );
 RoundSchema.index({ gameId: 1, roundNumber: 1 }, { unique: true });
+
+const GroupSchema = new Schema(
+  {
+    id: { type: String, required: true, unique: true },
+    name: String,
+    settings: Schema.Types.Mixed,
+    members: Schema.Types.Mixed,
+    createdAt: Date,
+    updatedAt: Date,
+  },
+  { minimize: false, versionKey: false, collection: 'groups' },
+);
 
 type Doc = Record<string, unknown>;
 const toDate = (ms: number | null) => (ms === null ? null : new Date(ms));
@@ -124,10 +152,12 @@ function fromRoundDoc(d: Doc): RoundRecord {
 export class MongoGameStore implements GameStore {
   private readonly games: Model<Doc>;
   private readonly rounds: Model<Doc>;
+  private readonly groups: Model<Doc>;
 
   private constructor(private readonly conn: Connection) {
     this.games = conn.model<Doc>('Game', GameSchema);
     this.rounds = conn.model<Doc>('Round', RoundSchema);
+    this.groups = conn.model<Doc>('Group', GroupSchema);
   }
 
   /** `dbName` overrides the database in the URI (used by tests). */
@@ -138,7 +168,11 @@ export class MongoGameStore implements GameStore {
     });
     await conn.asPromise();
     const store = new MongoGameStore(conn);
-    await Promise.all([store.games.createIndexes(), store.rounds.createIndexes()]);
+    await Promise.all([
+      store.games.createIndexes(),
+      store.rounds.createIndexes(),
+      store.groups.createIndexes(),
+    ]);
     return store;
   }
 
@@ -183,6 +217,68 @@ export class MongoGameStore implements GameStore {
       .limit(limit)
       .lean<Doc[]>();
     return docs.map(fromGameDoc);
+  }
+
+  async findGameByResultsId(resultsId: string): Promise<GameSnapshot | null> {
+    const doc = await this.games.findOne({ resultsId }).lean<Doc>();
+    return doc ? fromGameDoc(doc) : null;
+  }
+
+  async addShownHand(
+    code: string,
+    roundNumber: number,
+    playerId: string,
+    cards: string[],
+  ): Promise<void> {
+    // Player ids are base64url, so they are safe as a field name.
+    await this.rounds.updateOne(
+      { gameId: code, roundNumber },
+      { $set: { [`shownHands.${playerId}`]: cards } },
+    );
+  }
+
+  async saveGroup(group: GroupRecord): Promise<void> {
+    await this.groups.replaceOne(
+      { id: group.id },
+      { ...group, createdAt: new Date(group.createdAt), updatedAt: new Date(group.updatedAt) },
+      { upsert: true },
+    );
+  }
+
+  async findGroup(id: string): Promise<GroupRecord | null> {
+    const doc = await this.groups.findOne({ id }).lean<Doc>();
+    if (!doc) return null;
+    const { _id: _ignored, ...rest } = doc;
+    return {
+      ...(rest as unknown as GroupRecord),
+      createdAt: toMs(rest.createdAt) ?? 0,
+      updatedAt: toMs(rest.updatedAt) ?? 0,
+    };
+  }
+
+  async listGroupGames(groupId: string, limit: number): Promise<GroupGameSnapshot[]> {
+    const docs = await this.games
+      .find({ groupId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .select({
+        code: 1,
+        resultsId: 1,
+        status: 1,
+        mode: 1,
+        createdAt: 1,
+        endedAt: 1,
+        players: 1,
+        results: 1,
+        'currentRoundState.roundNumber': 1,
+        'currentRoundState.players': 1,
+      })
+      .lean<Doc[]>();
+    return docs.map((d) => ({
+      ...(d as unknown as GroupGameSnapshot),
+      createdAt: toMs(d.createdAt) ?? 0,
+      endedAt: toMs(d.endedAt),
+    }));
   }
 
   async close(): Promise<void> {

@@ -20,6 +20,8 @@ export interface ServerPlayer {
   leftAt: number | null;
   /** Web push subscriptions ("your turn"), one per device. Never sent to clients. */
   push: PushSubscriptionData[];
+  /** Group games: the group member this seat is. */
+  memberId: string | null;
   // Runtime only (not persisted):
   connected: boolean;
   connectedSince: number | null;
@@ -64,6 +66,10 @@ export interface ServerGame {
   chatSeq: number;
   /** Ended games: the rematch game and which old player became which new player. */
   rematch: RematchInfo | null;
+  /** Long random id of the read-only results page. */
+  resultsId: string;
+  /** The group this game was started from (name cached for the table screen). */
+  group: { id: string; name: string } | null;
   // Runtime only: whose turn it is and since when (for nudges); last nudge.
   turn: { key: string; playerId: string; since: number } | null;
   lastNudgeAt: number | null;

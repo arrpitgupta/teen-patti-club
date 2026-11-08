@@ -235,6 +235,8 @@ class LocalGame {
       stats: structuredClone(this.stats),
       results: this.results,
       rematchCode: null,
+      resultsId: '',
+      group: null,
       log: this.log.slice(-100),
     };
   }

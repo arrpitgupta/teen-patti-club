@@ -23,3 +23,11 @@ export function joinUrl(code: string): string {
 export function inviteNeedsLan(): boolean {
   return isLocalhost(new URL(shareOrigin()).hostname);
 }
+
+export function resultsUrl(resultsId: string): string {
+  return `${shareOrigin()}/r/${resultsId}`;
+}
+
+export function groupUrl(groupId: string): string {
+  return `${shareOrigin()}/group/${groupId}`;
+}

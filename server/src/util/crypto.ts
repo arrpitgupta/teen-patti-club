@@ -32,3 +32,8 @@ export function tokenMatches(token: string, hash: string): boolean {
 export function secureRandomInt(maxExclusive: number): number {
   return randomInt(maxExclusive);
 }
+
+/** 128-bit url-safe id for links that must not be guessable (results pages, groups). */
+export function newSecretId(): string {
+  return randomBytes(16).toString('base64url');
+}

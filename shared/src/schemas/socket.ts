@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { isCard, type Card } from '../cards/cards';
 import { ChatTextSchema, ReactionSchema } from '../chat';
 import { SettingsSchema } from '../games/teenPatti/settings';
+import { SecretIdSchema } from '../groups';
 
 /** 6 characters, no look-alikes (no I, O, 0, 1). */
 export const GameCodeSchema = z
@@ -28,10 +29,23 @@ const seatAction = z.object(actAs).strict();
 
 export const ClientEventSchemas = {
   'game:create': z
-    .object({ name: DisplayNameSchema, avatar: AvatarSchema, settings: SettingsSchema })
+    .object({
+      name: DisplayNameSchema,
+      avatar: AvatarSchema,
+      settings: SettingsSchema,
+      /** Start the game from a group (attaches it to the group's games and leaderboard). */
+      groupId: SecretIdSchema.optional(),
+      /** Group games: play as this existing member. */
+      memberId: PlayerIdSchema.optional(),
+    })
     .strict(),
   'game:join': z
-    .object({ code: GameCodeSchema, name: DisplayNameSchema, avatar: AvatarSchema })
+    .object({
+      code: GameCodeSchema,
+      name: DisplayNameSchema,
+      avatar: AvatarSchema,
+      memberId: PlayerIdSchema.optional(),
+    })
     .strict(),
   'game:reconnect': z.object({ code: GameCodeSchema, playerToken: PlayerTokenSchema }).strict(),
   'game:updateSettings': z.object({ settings: SettingsSchema }).strict(),

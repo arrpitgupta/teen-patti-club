@@ -85,20 +85,27 @@ export default function Home() {
           <span className="font-display text-xl font-bold">{t.home.join}</span>
           <span className="text-[13px] text-ink-300">{t.home.joinHint}</span>
         </Link>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Link
             to="/learn"
-            className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold text-ink-100 active:bg-white/5"
+            className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-[13px] font-semibold text-ink-100 active:bg-white/5"
           >
             <Icon name="info" size={18} />
             {t.learn.open}
           </Link>
           <Link
             to="/history"
-            className="flex min-h-[52px] items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold text-ink-100 active:bg-white/5"
+            className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-[13px] font-semibold text-ink-100 active:bg-white/5"
           >
             <Icon name="log" size={18} />
             {t.history.link}
+          </Link>
+          <Link
+            to="/groups"
+            className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-[13px] font-semibold text-ink-100 active:bg-white/5"
+          >
+            <Icon name="users" size={18} />
+            {t.groups.link}
           </Link>
         </div>
       </div>

@@ -7,9 +7,9 @@ import { HostSheet } from '../components/sheets/HostSheet';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
+import { rulesSummary } from '../components/settings/rulesSummary';
 import { t } from '../i18n';
 import { inviteNeedsLan, joinUrl } from '../lib/config';
-import { chips } from '../lib/format';
 import type { TableModel } from '../lib/model';
 import { act } from '../lib/socket';
 import { useGame } from '../store/game';
@@ -47,14 +47,7 @@ export default function LobbyRoom({ m }: { m: TableModel }) {
     }
   };
 
-  const rules = [
-    s.mode === 'physical' ? t.create.physical : t.create.digital,
-    s.chipMode === 'openTab' ? t.create.openTab : `${t.create.buyIn} ${chips(s.startingChips)}`,
-    `${t.create.boot.split(' (')[0]} ${chips(s.boot)}`,
-    s.turnTimerSec
-      ? `${t.create.timer} ${s.turnTimerSec}s`
-      : `${t.create.timer} ${t.create.timerOff.toLowerCase()}`,
-  ];
+  const rules = rulesSummary(s);
 
   return (
     <main className="screen px-5 py-4">

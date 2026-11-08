@@ -1,11 +1,13 @@
-import type { JoinResult } from '@tpc/shared';
-import { useCallback, useState } from 'react';
+import type { GameSummary, GroupJoinInfo, GroupMember, JoinResult } from '@tpc/shared';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { MemberPicker } from '../components/MemberPicker';
 import { ProfilePicker } from '../components/ProfilePicker';
 import { canScanQr, QrScanner } from '../components/QrScanner';
 import { INITIALS } from '../components/ui/Avatar';
 import { Icon } from '../components/ui/Icon';
 import { t } from '../i18n';
+import { api } from '../lib/api';
 import { act } from '../lib/socket';
 import { getProfile, getSeat, saveProfile, saveSeat } from '../lib/storage';
 
@@ -23,7 +25,30 @@ export default function JoinGame() {
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const existing = code.length === 6 ? getSeat(code) : undefined;
-  const valid = code.length === 6 && name.trim().length > 0;
+  // Group games: let the player pick their name from the group's members.
+  const [group, setGroup] = useState<GroupJoinInfo | null>(null);
+  const [member, setMember] = useState<GroupMember | null>(null);
+  useEffect(() => {
+    setGroup(null);
+    setMember(null);
+    if (code.length !== 6 || existing) return;
+    const controller = new AbortController();
+    api<GameSummary>(`/api/games/${code}`, { signal: controller.signal })
+      .then((s) => {
+        if (!s.group) return;
+        setGroup(s.group);
+        const key = (getProfile()?.name ?? '').trim().toLocaleLowerCase();
+        setMember(
+          s.group.members.find((m) => !m.taken && m.name.toLocaleLowerCase() === key) ?? null,
+        );
+      })
+      .catch(() => {
+        // Unknown code etc.: joining shows the error.
+      });
+    return () => controller.abort();
+  }, [code, existing]);
+  const playName = member ? member.name : name.trim();
+  const valid = code.length === 6 && playName.length > 0;
 
   const onScan = useCallback((c: string) => {
     setScanning(false);
@@ -34,12 +59,13 @@ export default function JoinGame() {
     setBusy(true);
     const res = await act<'game:join', JoinResult>('game:join', {
       code,
-      name: name.trim(),
-      avatar,
+      name: playName,
+      avatar: member ? member.avatar : avatar,
+      ...(member ? { memberId: member.id } : {}),
     });
     setBusy(false);
     if (!res) return;
-    saveProfile({ name: name.trim(), avatar });
+    if (!member) saveProfile({ name: playName, avatar });
     saveSeat({
       code: res.code,
       playerId: res.playerId,
@@ -105,7 +131,18 @@ export default function JoinGame() {
           </div>
         ) : (
           <>
-            <ProfilePicker name={name} avatar={avatar} onName={setName} onAvatar={setAvatar} />
+            {group && (
+              <p className="-mb-2 flex items-center gap-2 text-[15px] font-semibold">
+                <Icon name="users" size={18} />
+                {t.groups.groupGame(group.name)}
+              </p>
+            )}
+            {group && group.members.length > 0 && (
+              <MemberPicker members={group.members} value={member?.id ?? null} onPick={setMember} />
+            )}
+            {!member && (
+              <ProfilePicker name={name} avatar={avatar} onName={setName} onAvatar={setAvatar} />
+            )}
             <button
               type="button"
               disabled={!valid || busy}

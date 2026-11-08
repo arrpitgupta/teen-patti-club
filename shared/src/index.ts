@@ -13,3 +13,4 @@ export * from './settlement/settlement';
 export * from './schemas/socket';
 export * from './chat';
 export * from './protocol';
+export * from './groups';

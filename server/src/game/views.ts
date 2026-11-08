@@ -3,10 +3,13 @@ import {
   privateView,
   publicView,
   type GameSummary,
+  type GroupGameRow,
+  type ResultsPage,
+  type RoundLog,
   type PrivateGameState,
   type PublicGameState,
 } from '@tpc/shared';
-import type { GameSnapshot } from '../store/types';
+import type { GameSnapshot, GroupGameSnapshot, RoundRecord } from '../store/types';
 import type { ServerGame } from './types';
 
 const LOG_TAIL = 100;
@@ -51,6 +54,8 @@ export function publicState(game: ServerGame, now: number): PublicGameState {
     stats: structuredClone(game.stats),
     results: game.results ? structuredClone(game.results) : null,
     rematchCode: game.rematch?.code ?? null,
+    resultsId: game.resultsId,
+    group: game.group ? { ...game.group } : null,
     log: game.log.slice(-LOG_TAIL),
   };
 }
@@ -80,5 +85,80 @@ export function summaryFromSnapshot(s: GameSnapshot): GameSummary {
       };
     }),
     results: s.results,
+    resultsId: s.resultsId ?? null,
+  };
+}
+
+/** A game as a row on the group page: final ranking order once ended, nets so far before. */
+export function groupGameRow(s: GroupGameSnapshot): GroupGameRow {
+  const memberOf = new Map(s.players.map((p) => [p.id, p.memberId ?? null]));
+  const players = s.results
+    ? s.results.rankings.map((r) => ({
+        memberId: memberOf.get(r.playerId) ?? null,
+        name: r.name,
+        avatar: r.avatar,
+        net: r.net,
+      }))
+    : (() => {
+        const nets = new Map(computeNets(s.currentRoundState.players).map((n) => [n.id, n.net]));
+        return s.players
+          .filter((p) => p.leftAt === null || nets.get(p.id))
+          .map((p) => ({
+            memberId: p.memberId ?? null,
+            name: p.name,
+            avatar: p.avatar,
+            net: nets.get(p.id) ?? 0,
+          }));
+      })();
+  return {
+    code: s.code,
+    resultsId: s.resultsId ?? null,
+    status: s.status,
+    mode: s.mode,
+    createdAt: s.createdAt,
+    endedAt: s.endedAt,
+    roundNumber: s.currentRoundState.roundNumber,
+    players,
+  };
+}
+
+export function roundLog(r: RoundRecord): RoundLog {
+  return {
+    roundNumber: r.roundNumber,
+    boot: r.boot,
+    pot: r.pot,
+    reason: r.reason,
+    winnerIds: r.winnerIds,
+    winningHand: r.winningHand,
+    revealedHands: (r.revealedHands ?? {}) as RoundLog['revealedHands'],
+    shownHands: (r.shownHands ?? {}) as RoundLog['shownHands'],
+    actions: (r.actions ?? []).map((a) => ({
+      playerId: a.playerId,
+      type: a.type,
+      amount: a.amount,
+      potAfter: a.potAfter,
+    })),
+    resolution: r.resolution,
+    endedAt: r.endedAt,
+  };
+}
+
+export function resultsPage(
+  s: GameSnapshot,
+  rounds: RoundRecord[],
+  groupName: string | null,
+): ResultsPage {
+  const summary = summaryFromSnapshot(s);
+  return {
+    code: s.code,
+    status: s.status,
+    mode: s.mode,
+    createdAt: s.createdAt,
+    endedAt: s.endedAt,
+    roundNumber: summary.roundNumber,
+    players: summary.players,
+    results: s.results,
+    rounds: rounds.map(roundLog),
+    groupName,
   };
 }

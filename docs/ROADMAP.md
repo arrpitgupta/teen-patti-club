@@ -21,10 +21,23 @@ SPEC.md §13 lists the core phases. This file records what was added or dropped 
    voluntary "Show my cards" after a round, revealed hands in the round log.
 
 All six are built. Then Phase 5 (Learning) and Phase 6 (Polish) as in SPEC.md, both built.
+
+## Before Phase 7 (built)
+
+7. **Permanent results link**: every game gets a long random id (not the join code); `/r/<id>` is a
+   read-only page with podium, rankings, settlement and every round (incl. revealed and voluntarily
+   shown hands). In the WhatsApp summary and on the End Game screen. "Best hand" only counts hands
+   that were shown, since results are public.
+8. **Saved groups**: a group has a name, a secret link (`/group/<id>`) and house rules stored on the
+   server. Games started from the group attach to it and start with its rules; the group page shows
+   games in progress, past games (→ results pages), a monthly and all-time leaderboard, and "New game
+   with the group". Joining a group game offers "Who are you?" with the members' names; a typed
+   name that matches a free member is that member, otherwise a new member is added.
+
 Next: Phase 7 (Deploy).
 
 ## Backlog (after Phase 6)
 
 - Sentry error reporting + a "Report a problem" button.
-- Saved groups of friends + leaderboards across games.
-- Results export.
+- ~~Saved groups of friends + leaderboards across games.~~ Built (see 8).
+- Results export (CSV / PDF). The results link covers sharing; a file export is still open.

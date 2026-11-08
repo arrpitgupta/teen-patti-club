@@ -1,6 +1,7 @@
 // Shapes the server sends to clients. Shared so the client is typed against the same definitions.
 import type { EngineErrorCode } from './engine/types';
 import type { Settings } from './games/teenPatti/settings';
+import type { GroupJoinInfo } from './groups';
 import type { PlayerId, TeenPattiEvent } from './games/teenPatti/types';
 import type { PrivateView, PublicTable } from './games/teenPatti/views';
 import type { Payment } from './settlement/settlement';
@@ -16,6 +17,7 @@ export type ServerErrorCode =
   | 'RATE_LIMITED'
   | 'NOT_IN_GAME'
   | 'GAME_NOT_FOUND'
+  | 'GROUP_NOT_FOUND'
   | 'GAME_ENDED'
   | 'GAME_NOT_STARTED'
   | 'NOT_HOST'
@@ -159,6 +161,10 @@ export interface PublicGameState {
   results: GameResults | null;
   /** Ended games: code of the rematch someone started (join it with `game:rematch`). */
   rematchCode: string | null;
+  /** Read-only results page: /r/<resultsId>. */
+  resultsId: string;
+  /** Games started from a group (players at the table may open the group page). */
+  group: { id: string; name: string } | null;
   /** Most recent log entries (full log via REST later). */
   log: LogEntry[];
 }
@@ -176,4 +182,8 @@ export interface GameSummary {
   roundNumber: number;
   players: { id: PlayerId; name: string; avatar: string; balance: number; net: number }[];
   results: GameResults | null;
+  /** Read-only results page id (older games may have none). */
+  resultsId: string | null;
+  /** Group games: the group's name and members, so a joining player can pick their name. */
+  group?: GroupJoinInfo | null;
 }

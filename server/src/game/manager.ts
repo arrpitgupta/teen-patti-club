@@ -12,6 +12,7 @@ import {
   rankByNet,
   settle,
   shuffle,
+  type Card,
   type ChatKind,
   type ChatMessage,
   type ClientEventName,
@@ -21,6 +22,7 @@ import {
   type LogEntry,
   type PlayerStats,
   type ReconnectResult,
+  type RoundRules,
   type ServerLogEvent,
   type Settings,
   type TableAction,
@@ -32,10 +34,12 @@ import {
   newGameCode,
   newPlayerId,
   newPlayerToken,
+  newSecretId,
   secureRandomInt,
   tokenMatches,
 } from '../util/crypto';
 import { log } from '../util/log';
+import { GroupService } from './groups';
 import {
   fail,
   ok,
@@ -106,6 +110,8 @@ const QUICK_MAX_CHARS = 40;
 export interface PlayerInput {
   name: string;
   avatar: string;
+  /** Group games: play as this existing member. */
+  memberId?: string | undefined;
 }
 
 const emptyStats = (): PlayerStats => ({
@@ -117,6 +123,7 @@ const emptyStats = (): PlayerStats => ({
 
 export class GameManager {
   readonly opts: ManagerOptions;
+  readonly groups: GroupService;
   onChange: ChangeListener = () => {};
   onKick: KickListener = () => {};
   onChat: ChatListener = () => {};
@@ -127,6 +134,8 @@ export class GameManager {
   private readonly persistTimers = new Map<string, NodeJS.Timeout>();
   private readonly evictTimers = new Map<string, NodeJS.Timeout>();
   private readonly saveChains = new Map<string, Promise<void>>();
+  /** Round records are written in order (a shown hand is added to an already saved round). */
+  private readonly roundChains = new Map<string, Promise<void>>();
   private readonly rematchLocks = new Map<string, Promise<void>>();
   private stopped = false;
 
@@ -135,6 +144,7 @@ export class GameManager {
     opts: Partial<ManagerOptions> = {},
   ) {
     this.opts = { ...DEFAULT_MANAGER_OPTIONS, ...opts };
+    this.groups = new GroupService(store, () => this.opts.now());
   }
 
   private now(): number {
@@ -156,7 +166,9 @@ export class GameManager {
     const snapshots = await this.store.loadOpenGames();
     for (const s of snapshots) {
       const game = this.hydrate(s);
+      await this.attachGroup(game);
       this.games.set(game.code, game);
+      if (!s.resultsId) this.persistNow(game);
       this.refreshTurn(game, false);
       this.refreshTimer(game);
       this.refreshHostAway(game);
@@ -174,7 +186,8 @@ export class GameManager {
       const game = this.games.get(code);
       if (game) this.persistNow(game);
     }
-    await Promise.all([...this.saveChains.values()]);
+    await Promise.all([...this.saveChains.values(), ...this.roundChains.values()]);
+    await this.groups.flush();
   }
 
   /** Stop all timers. Pending writes that were not flushed are dropped (like a crash). */
@@ -188,7 +201,11 @@ export class GameManager {
 
   // ---------- Create / join / reconnect ----------
 
-  async createGame(input: PlayerInput & { settings: Settings }): Promise<Result<JoinResult>> {
+  async createGame(
+    input: PlayerInput & { settings: Settings; groupId?: string | undefined },
+  ): Promise<Result<JoinResult>> {
+    const group = input.groupId ? await this.groups.load(input.groupId) : null;
+    if (input.groupId && !group) return fail('GROUP_NOT_FOUND', "That group doesn't exist.");
     let code = newGameCode();
     for (let i = 0; this.games.has(code) || (await this.store.codeExists(code)); i++) {
       if (i > 20) return fail('INTERNAL', 'Could not create a game code. Please try again.');
@@ -219,6 +236,8 @@ export class GameManager {
       chat: [],
       chatSeq: 0,
       rematch: null,
+      resultsId: newSecretId(),
+      group: group ? { id: group.id, name: group.name } : null,
       turn: null,
       lastNudgeAt: null,
     };
@@ -236,6 +255,7 @@ export class GameManager {
     const game = this.games.get(code);
     if (!game) return this.missingGame(code);
     if (game.status === 'ended') return fail('GAME_ENDED', 'This game has ended.');
+    if (game.group) await this.groups.load(game.group.id);
     const token = newPlayerToken();
     const added = this.addPlayer(game, input, hashToken(token), false);
     if (!added.ok) return added;
@@ -249,8 +269,12 @@ export class GameManager {
       // Ended games are not kept in memory forever; load one so its results can be shown.
       const snap = await this.store.findGame(code);
       if (!snap) return fail('GAME_NOT_FOUND', "That game doesn't exist.");
+      const fresh = !this.games.has(code);
       game = this.games.get(code) ?? this.hydrate(snap);
+      if (fresh) await this.attachGroup(game);
+      game = this.games.get(code) ?? game;
       this.games.set(code, game);
+      if (!snap.resultsId) this.persistNow(game);
       if (game.status === 'ended') this.scheduleEviction(game);
     }
     const player = game.players.find((p) => p.tokenHash && tokenMatches(playerToken, p.tokenHash));
@@ -309,7 +333,11 @@ export class GameManager {
         this.persistNow(next);
         return ok({ code: next.code, playerId: existing.id, playerToken: token });
       }
-      const joined = await this.joinGame(next.code, { name: me.name, avatar: me.avatar });
+      const joined = await this.joinGame(next.code, {
+        name: me.name,
+        avatar: me.avatar,
+        memberId: me.memberId ?? undefined,
+      });
       if (!joined.ok) return joined;
       game.rematch.seats[me.id] = joined.data.playerId;
       this.persistNow(game);
@@ -319,6 +347,8 @@ export class GameManager {
     const created = await this.createGame({
       name: me.name,
       avatar: me.avatar,
+      memberId: me.memberId ?? undefined,
+      groupId: game.group?.id,
       settings: structuredClone(game.table.settings),
     });
     if (!created.ok) return created;
@@ -326,7 +356,12 @@ export class GameManager {
     // Players without a phone come along; the new host plays them again.
     for (const p of game.players) {
       if (!p.isOffline || p.leftAt !== null) continue;
-      const added = this.addPlayer(next, { name: p.name, avatar: p.avatar }, null, true);
+      const added = this.addPlayer(
+        next,
+        { name: p.name, avatar: p.avatar, memberId: p.memberId ?? undefined },
+        null,
+        true,
+      );
       if (added.ok) this.pushLog(next, [{ type: 'OFFLINE_SEAT_ADDED', playerId: added.data }]);
     }
     if (next.players.length > 1) this.commit(next, [], 'now');
@@ -348,18 +383,30 @@ export class GameManager {
     isOffline: boolean,
     id: string = newPlayerId(),
   ): Result<string> {
+    let name = input.name;
+    let memberId: string | null = null;
+    const group = game.group ? this.groups.cached(game.group.id) : undefined;
+    if (group) {
+      const taken = new Set(
+        game.players.filter((p) => p.leftAt === null && p.memberId).map((p) => p.memberId!),
+      );
+      const member = this.groups.resolveMember(group, input, taken);
+      if (!member.ok) return member;
+      ({ memberId, name } = member.data);
+    }
     const res = applyAction(game.table, { type: 'ADD_PLAYER', playerId: id });
     if (!res.ok) return fail(res.error.code, res.error.message);
     game.table = res.state;
     game.players.push({
       id,
-      name: input.name,
+      name,
       avatar: input.avatar,
       tokenHash,
       isOffline,
       joinedAt: this.now(),
       leftAt: null,
       push: [],
+      memberId,
       connected: false,
       connectedSince: null,
       disconnectedAt: null,
@@ -740,8 +787,32 @@ export class GameManager {
       (e) => e.type === 'ROUND_ENDED' || e.type === 'ROUND_CANCELLED',
     );
     if (roundOver) this.finishRound(game, now);
+    for (const e of res.events) {
+      if (e.type !== 'HAND_SHOWN' || !game.table.round) continue;
+      const { roundNumber, rules } = game.table.round;
+      const cards = [...e.cards];
+      this.noteBestHand(game, e.playerId, cards, rules.a23Rank);
+      this.roundWrite(
+        game.code,
+        () => this.store.addShownHand(game.code, roundNumber, e.playerId, cards),
+        'saving shown hand failed',
+      );
+    }
     this.commit(game, [...extra, ...res.events], roundOver ? 'now' : 'debounced');
     return ok(null);
+  }
+
+  private noteBestHand(
+    game: ServerGame,
+    playerId: string,
+    hand: readonly Card[],
+    a23Rank: RoundRules['a23Rank'],
+  ): void {
+    const s = (game.stats[playerId] ??= emptyStats());
+    const v = evaluateHand(hand, { a23Rank });
+    if (!s.bestHand || v.score > s.bestHand.score) {
+      s.bestHand = { score: v.score, name: describeHandValue(v) };
+    }
   }
 
   private finishRound(game: ServerGame, now: number): void {
@@ -757,12 +828,9 @@ export class GameManager {
           s.roundsWon += 1;
           s.biggestPotWon = Math.max(s.biggestPotWon, payout);
         }
-        if (rp.hand) {
-          const v = evaluateHand(rp.hand, { a23Rank: r.rules.a23Rank });
-          if (!s.bestHand || v.score > s.bestHand.score) {
-            s.bestHand = { score: v.score, name: describeHandValue(v) };
-          }
-        }
+        // Only hands everyone saw count (results are public; packed hands stay secret).
+        const shown = result.revealedHands[rp.id];
+        if (shown) this.noteBestHand(game, rp.id, shown, r.rules.a23Rank);
       }
     }
     const record = {
@@ -780,7 +848,7 @@ export class GameManager {
       startedAt: game.roundStartedAt ?? now,
       endedAt: now,
     };
-    this.store.saveRound(record).catch((e: unknown) => log.error('saving round failed', e));
+    this.roundWrite(game.code, () => this.store.saveRound(record), 'saving round failed');
   }
 
   // ---------- Commit: log, timers, persist, broadcast ----------
@@ -1041,6 +1109,15 @@ export class GameManager {
     });
   }
 
+  private roundWrite(code: string, write: () => Promise<void>, what: string): void {
+    const prev = this.roundChains.get(code) ?? Promise.resolve();
+    const next = prev.then(write).catch((e: unknown) => log.error(what, e));
+    this.roundChains.set(code, next);
+    void next.finally(() => {
+      if (this.roundChains.get(code) === next) this.roundChains.delete(code);
+    });
+  }
+
   private scheduleEviction(game: ServerGame): void {
     clearTimeout(this.evictTimers.get(game.code));
     if (this.stopped) return;
@@ -1075,6 +1152,7 @@ export class GameManager {
           joinedAt: p.joinedAt,
           leftAt: p.leftAt,
           push: p.push,
+          memberId: p.memberId,
         };
       }),
       currentRoundState: game.table,
@@ -1088,10 +1166,38 @@ export class GameManager {
       chat: game.chat,
       chatSeq: game.chatSeq,
       rematch: game.rematch,
+      resultsId: game.resultsId,
+      groupId: game.group?.id ?? null,
       createdAt: game.createdAt,
       updatedAt: game.updatedAt,
       endedAt: game.endedAt,
     });
+  }
+
+  /** Loads the group of a restored game into the cache (for its name and member matching). */
+  private async attachGroup(game: ServerGame): Promise<void> {
+    if (!game.group) return;
+    const group = await this.groups.load(game.group.id).catch((e: unknown) => {
+      log.error('loading group failed', e);
+      return null;
+    });
+    if (group) game.group.name = group.name;
+  }
+
+  /** A group was renamed: live games show the new name with their next update. */
+  renameGroupInGames(groupId: string, name: string): void {
+    for (const g of this.games.values()) if (g.group?.id === groupId) g.group.name = name;
+  }
+
+  /** Snapshot of a live game (fresher than the debounced one in the store). */
+  liveSnapshot(code: string): GameSnapshot | null {
+    const game = this.games.get(code);
+    return game ? this.snapshot(game) : null;
+  }
+
+  /** Codes of live games started from this group. */
+  liveGroupCodes(groupId: string): string[] {
+    return [...this.games.values()].filter((g) => g.group?.id === groupId).map((g) => g.code);
   }
 
   private hydrate(s: GameSnapshot): ServerGame {
@@ -1113,6 +1219,7 @@ export class GameManager {
         joinedAt: p.joinedAt,
         leftAt: p.leftAt,
         push: Array.isArray(p.push) ? p.push : [],
+        memberId: p.memberId ?? null,
         // Everyone starts disconnected after a restart; clients reconnect with their token.
         connected: false,
         connectedSince: null,
@@ -1131,6 +1238,9 @@ export class GameManager {
       chat: s.chat ?? [],
       chatSeq: s.chatSeq ?? s.chat?.at(-1)?.id ?? 0,
       rematch: s.rematch ?? null,
+      // Games from before results links get one now (saved with the next snapshot).
+      resultsId: s.resultsId ?? newSecretId(),
+      group: s.groupId ? { id: s.groupId, name: '' } : null,
       turn: null,
       lastNudgeAt: null,
     };

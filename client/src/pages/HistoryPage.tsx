@@ -175,6 +175,15 @@ export default function HistoryPage() {
                 })}
               </ul>
             )}
+            {open.resultsId && (
+              <Link
+                to={`/r/${open.resultsId}`}
+                className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-panel text-[15px] font-semibold"
+              >
+                <Icon name="log" size={18} />
+                {t.history.roundByRound}
+              </Link>
+            )}
             <p className="pb-2 text-xs text-ink-500">{t.virtualOnly}</p>
           </>
         )}

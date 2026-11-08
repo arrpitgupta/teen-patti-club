@@ -5,9 +5,12 @@ const PRIVATE_ORIGIN =
   /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
 
 export function allowedOrigins(config: Config): string[] {
-  return config.CLIENT_ORIGIN.split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  return (
+    config.CLIENT_ORIGIN.split(',')
+      // "https://x.vercel.app/" (pasted with a slash) must still match the browser's origin.
+      .map((o) => o.trim().replace(/\/+$/, ''))
+      .filter(Boolean)
+  );
 }
 
 /**

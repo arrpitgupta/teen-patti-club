@@ -33,6 +33,7 @@ export const en = {
   },
 
   home: {
+    version: (id: string) => `Version ${id}`,
     waking: 'Waking up the table…',
     wakingSlow: 'Still waking up — free servers take about 30 seconds.',
     ready: 'Table is ready',
@@ -336,6 +337,11 @@ export const en = {
     open: 'still open',
     rejoin: 'Rejoin',
     roundByRound: 'Results page with every round',
+  },
+
+  update: {
+    ready: 'A new version is ready.',
+    reload: 'Reload',
   },
 
   install: {

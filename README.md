@@ -54,33 +54,51 @@ No MongoDB handy? `pnpm --filter @tpc/server dev:memory` runs the server with an
 
 ## Deployment
 
-_Full steps will be written in the Deploy phase._
+Live: client on **Vercel** (`https://teen-patti-club.vercel.app`), server on **Render** (`https://teen-patti-club.onrender.com`), data in **MongoDB Atlas**. Pushing to `main` deploys both.
 
-1. **MongoDB Atlas** — free M0 cluster, database user, network access, connection string → `MONGODB_URI`.
-2. **Render** (server) — Web Service with these settings:
+1. **MongoDB Atlas**: a free M0 cluster, a database user, network access `0.0.0.0/0` (Render has no fixed IP on the free plan), and the connection string → `MONGODB_URI`. The server creates its collections (`games`, `rounds`, `groups`) and indexes on start.
+2. **Render** (server): a Web Service with these settings:
    - **Root directory:** leave empty (repo root, so the pnpm workspace and `@tpc/shared` are available).
    - **Build command:** `corepack enable && NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @tpc/server build`
      (`NODE_ENV=development` for the install only, so the build tools in devDependencies are installed even though the service runs with `NODE_ENV=production`).
    - **Start command:** `pnpm --filter @tpc/server start`
    - **Health check path:** `/health`
+   - **Auto-deploy:** on commit to `main`.
 
    Environment variables:
 
    | Variable                                 | Value                                                                                                           |
    | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-   | `NODE_ENV`                               | `production` — **required**. It turns off the `/dev` console.                                                   |
-   | `MONGODB_URI`                            | Atlas connection string                                                                                         |
-   | `CLIENT_ORIGIN`                          | Your Vercel URL, e.g. `https://teen-patti-club.vercel.app`                                                      |
+   | `NODE_ENV`                               | `production`: **required**. It turns off the `/dev` console and the LAN origins.                                |
+   | `MONGODB_URI`                            | Atlas connection string (never logged)                                                                          |
+   | `CLIENT_ORIGIN`                          | The Vercel URL, `https://teen-patti-club.vercel.app`. Several origins: comma-separated (e.g. a custom domain).  |
    | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | From `npx web-push generate-vapid-keys` (run once, keep them). Without them, "your turn" notifications are off. |
    | `VAPID_SUBJECT`                          | `mailto:` address or `https://` URL push services can contact                                                   |
 
-   After deploying, check that `https://<your-render-app>/dev` returns **404**.
+   On start the server logs a warning for a non-https `CLIENT_ORIGIN` or missing push settings.
 
-3. **Vercel** (client) — import the repo and set:
-   - **Root directory:** `client`
-   - **Config variable** (Settings → Environment Variables): `VITE_SERVER_URL` = your Render URL, e.g. `https://teen-patti-club.onrender.com`. It is baked in at build time, so redeploy after changing it.
+3. **Vercel** (client): import the repo and set:
+   - **Root directory:** `client` (framework preset Vite; build `vite build`, output `dist`).
+   - **Environment variable:** `VITE_SERVER_URL` = `https://teen-patti-club.onrender.com`. It is baked in at build time, so redeploy after changing it.
 
-   The SPA rewrite to `index.html` is in `client/vercel.json`.
+   `client/vercel.json` rewrites every route except `/assets/*` to `index.html` (a missing asset must be a 404, not the page), serves `sw.js` with `no-cache` and hashed `/assets/*` as immutable.
+
+### Checking a deploy
+
+- `https://teen-patti-club.onrender.com/health` returns `{ ok: true, build: "<commit>", push: true, … }`. `build` is the deployed commit (Render sets `RENDER_GIT_COMMIT`); `push: false` means the VAPID keys are missing.
+- The Home screen footer shows `Version <commit>` of the client (from Vercel's `VERCEL_GIT_COMMIT_SHA`). Both should match the latest commit on `main`.
+- `https://teen-patti-club.onrender.com/dev` returns **404**.
+
+### Updates on phones
+
+The service worker keeps an offline copy of the app (network-first for pages, cache-first for hashed `/assets/`). After a deploy, the next page load gets the new version and old assets are dropped from the cache. A tab that stays open checks for a new version when it comes back to the foreground and every 30 minutes: away from a table it reloads by itself; at a table, practice or tutorial it shows "A new version is ready · Reload" so nobody loses a turn. Bump `SHELL` in `client/public/sw.js` only when the caching rules change.
+
+### Free-plan notes
+
+- Render's free plan sleeps after ~15 minutes without traffic; the first visit then takes ~30–60 s (the Home screen says "Waking up the table…"). Live games are saved to MongoDB and restored on start, and players reconnect automatically.
+- "Your turn" notifications need the server awake, so they only arrive while a game is active.
+- Web push and installing the app need https: they work on the Vercel URL, not on `http://<LAN IP>` during development. iPhone notifications only work after "Add to Home Screen" (iOS 16.4+).
+- Vercel preview deployments (`*-git-*.vercel.app`) are not in `CLIENT_ORIGIN`, so they can't reach the server; add their URL there if you want to test one.
 
 ## License
 

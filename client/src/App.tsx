@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toasts } from './components/ui/Toasts';
+import { UpdateBanner } from './components/UpdateBanner';
 import CreateGame from './pages/CreateGame';
 import GamePage from './pages/GamePage';
 import GroupPage from './pages/GroupPage';
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toasts />
+      <UpdateBanner />
     </>
   );
 }

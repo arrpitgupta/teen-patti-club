@@ -25,9 +25,15 @@ export interface RouteOptions {
   /** New groups per IP: burst, then this many per minute. */
   groupCreateBurst: number;
   groupCreatePerMinute: number;
+  /** Deployed commit, shown by /health. */
+  buildId: string | null;
 }
 
-const DEFAULT_ROUTE_OPTIONS: RouteOptions = { groupCreateBurst: 10, groupCreatePerMinute: 1 };
+const DEFAULT_ROUTE_OPTIONS: RouteOptions = {
+  groupCreateBurst: 10,
+  groupCreatePerMinute: 2,
+  buildId: null,
+};
 
 export function createRoutes(
   store: GameStore,
@@ -73,6 +79,8 @@ export function createRoutes(
     res.json({
       ok: true,
       engine: ENGINE_VERSION,
+      build: opts.buildId,
+      push: manager.opts.push !== null,
       uptime: process.uptime(),
       games: manager.gameCount,
     });

@@ -44,7 +44,7 @@ export function createServer({
   app.use(express.json({ limit: '32kb' }));
 
   const manager = new GameManager(store, { push: createPushSender(config), ...managerOptions });
-  app.use(createRoutes(store, manager));
+  app.use(createRoutes(store, manager, { buildId: config.RENDER_GIT_COMMIT?.slice(0, 7) ?? null }));
   if (config.NODE_ENV !== 'production') {
     // Dev-only console for manual testing before the real client exists.
     app.get('/dev', (_req, res) => {

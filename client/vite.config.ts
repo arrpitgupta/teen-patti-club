@@ -20,6 +20,8 @@ export default defineConfig(({ command }) => ({
   plugins: [react()],
   define: {
     __LAN_ORIGIN__: JSON.stringify(command === 'serve' ? lanOrigin() : null),
+    // Short commit id of this build (Vercel sets VERCEL_GIT_COMMIT_SHA), shown on Home.
+    __BUILD_ID__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'dev'),
   },
   server: { port: PORT, strictPort: true, host: true },
   preview: { port: PORT, strictPort: true, host: true },

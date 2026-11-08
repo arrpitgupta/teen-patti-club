@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { createServer } from './app';
-import { loadConfig } from './config';
+import { loadConfig, productionWarnings } from './config';
 import { MongoGameStore } from './store/mongo';
 import { log, registerSecret } from './util/log';
 
@@ -27,6 +27,7 @@ async function main(): Promise<void> {
   const server = createServer({ config, store });
   const port = await server.start(config.PORT);
   log.info(`listening on :${port} (allowed origin: ${config.CLIENT_ORIGIN})`);
+  for (const w of productionWarnings(config)) log.warn(w);
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {

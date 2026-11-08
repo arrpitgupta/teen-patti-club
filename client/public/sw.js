@@ -4,7 +4,7 @@
  * - "your turn" notifications (web push)
  * The game server (another origin) is never cached. */
 
-const SHELL = 'tpc-shell-v1';
+const SHELL = 'tpc-shell-v2';
 const PRECACHE = [
   '/',
   '/manifest.webmanifest',
@@ -33,12 +33,26 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+const isHtml = (res) => (res.headers.get('content-type') ?? '').includes('text/html');
+
 async function cacheFirst(req) {
   const hit = await caches.match(req);
   if (hit) return hit;
   const res = await fetch(req);
-  if (res.ok) (await caches.open(SHELL)).put(req, res.clone());
+  // Never keep a page (e.g. an SPA fallback) under a script or style URL.
+  if (res.ok && !isHtml(res)) (await caches.open(SHELL)).put(req, res.clone());
   return res;
+}
+
+/** After a deploy: drop built files that the current page no longer uses. */
+async function pruneAssets(html) {
+  const used = new Set(html.match(/\/assets\/[^"'\s)]+/g) ?? []);
+  if (used.size === 0) return;
+  const cache = await caches.open(SHELL);
+  for (const req of await cache.keys()) {
+    const path = new URL(req.url).pathname;
+    if (path.startsWith('/assets/') && !used.has(path)) await cache.delete(req);
+  }
 }
 
 async function staleWhileRevalidate(req) {
@@ -56,7 +70,14 @@ async function staleWhileRevalidate(req) {
 async function networkFirstPage(req) {
   try {
     const res = await fetch(req);
-    if (res.ok) (await caches.open(SHELL)).put('/', res.clone());
+    if (res.ok && isHtml(res)) {
+      (await caches.open(SHELL)).put('/', res.clone());
+      res
+        .clone()
+        .text()
+        .then(pruneAssets)
+        .catch(() => undefined);
+    }
     return res;
   } catch {
     return (await caches.match('/')) ?? Response.error();

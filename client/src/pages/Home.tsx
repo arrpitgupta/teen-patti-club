@@ -146,7 +146,9 @@ export default function Home() {
           />
           {statusText}
         </p>
-        <p className="text-xs text-ink-500">{t.virtualOnly}</p>
+        <p className="text-xs text-ink-500">
+          {t.virtualOnly} · {t.home.version(__BUILD_ID__)}
+        </p>
       </div>
     </main>
   );

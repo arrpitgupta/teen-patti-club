@@ -34,7 +34,11 @@ All six are built. Then Phase 5 (Learning) and Phase 6 (Polish) as in SPEC.md, b
    with the group". Joining a group game offers "Who are you?" with the members' names; a typed
    name that matches a free member is that member, otherwise a new member is added.
 
-Next: Phase 7 (Deploy).
+## Phase 7 (Deploy)
+
+Live on Vercel + Render + Atlas (see README → Deployment). Production checks: `/health` reports the
+deployed commit and whether push is on; the client shows its version on Home; missing `/assets/*`
+are 404s; open tabs pick up new deploys (auto-reload away from a table, "Reload" banner at one).
 
 ## Backlog (after Phase 6)
 
